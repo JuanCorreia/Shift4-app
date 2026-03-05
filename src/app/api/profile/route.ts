@@ -51,6 +51,8 @@ export async function PATCH(request: NextRequest) {
       email: email.trim(),
       name: name.trim(),
       role: session.role,
+      partnerId: session.partnerId,
+      partnerName: session.partnerName,
     });
 
     return NextResponse.json({ success: true });

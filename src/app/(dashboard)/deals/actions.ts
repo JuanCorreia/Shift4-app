@@ -4,14 +4,44 @@ import { db } from "@/lib/db";
 import { deals, dealHistory } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 import { dealFormSchema } from "@/lib/validators/deal";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { partnerFilter } from "@/lib/db/helpers";
 import { revalidatePath } from "next/cache";
+import { calculatePricing } from "@/lib/pricing/engine";
+import type { PricingInput } from "@/lib/pricing";
 
 export async function createDeal(data: unknown) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
+  if (!session.partnerId) throw new Error("No partner assigned");
 
   const parsed = dealFormSchema.parse(data);
+
+  // Calculate pricing server-side
+  const pricingInput: PricingInput = {
+    merchantName: parsed.merchantName,
+    annualVolume: parsed.annualVolume,
+    avgTransactionSize: parsed.avgTransactionSize,
+    cardMix: {
+      visa: parsed.cardMixVisa,
+      mastercard: parsed.cardMixMastercard,
+      amex: parsed.cardMixAmex,
+      other: parsed.cardMixOther,
+      international: parsed.cardMixInternational,
+      corporate: parsed.cardMixCorporate,
+      debit: parsed.cardMixDebit,
+    },
+    currentBlendedRate: parsed.currentBlendedRate ?? 0,
+    currentTxFee: parsed.currentTxFee ?? 0,
+    currentMonthlyFee: parsed.currentMonthlyFee ?? 0,
+    dccEligible: parsed.dccEligible,
+    dccUptake: parsed.dccUptake,
+    dccMarkup: parsed.dccMarkup,
+    propertyCount: parsed.propertyCount ?? 1,
+    starRating: parsed.starRating ?? 4,
+  };
+
+  const pricingResult = calculatePricing(pricingInput);
 
   const [deal] = await db
     .insert(deals)
@@ -37,8 +67,10 @@ export async function createDeal(data: unknown) {
       dccEligible: parsed.dccEligible,
       dccUptake: String(parsed.dccUptake),
       dccMarkup: String(parsed.dccMarkup),
+      pricingResult,
       mode: parsed.mode,
       status: "draft",
+      partnerId: session.partnerId,
       createdBy: session.userId,
     })
     .returning();
@@ -61,8 +93,10 @@ export async function updateDeal(id: string, data: unknown) {
 
   const parsed = dealFormSchema.partial().parse(data);
 
-  // Fetch current deal for history comparison
-  const [existing] = await db.select().from(deals).where(eq(deals.id, id));
+  // Fetch current deal for history comparison (scoped to partner)
+  const pf = partnerFilter(session);
+  const conditions = pf ? and(eq(deals.id, id), pf) : eq(deals.id, id);
+  const [existing] = await db.select().from(deals).where(conditions);
   if (!existing) throw new Error("Deal not found");
 
   const updateValues: Record<string, unknown> = {
@@ -112,6 +146,44 @@ export async function updateDeal(id: string, data: unknown) {
   }
 
   if (Object.keys(updateValues).length > 1) {
+    // Recalculate pricing if any pricing-relevant field changed
+    const pricingFields = new Set([
+      'annualVolume', 'avgTransactionSize',
+      'cardMixVisa', 'cardMixMastercard', 'cardMixAmex', 'cardMixOther',
+      'cardMixInternational', 'cardMixCorporate', 'cardMixDebit',
+      'currentBlendedRate', 'currentTxFee', 'currentMonthlyFee',
+      'dccEligible', 'dccUptake', 'dccMarkup', 'propertyCount', 'starRating',
+    ]);
+    const hasPricingChange = historyEntries.some((e) => pricingFields.has(e.field));
+
+    if (hasPricingChange) {
+      // Merge existing values with updates for recalculation
+      const merged = { ...existing, ...updateValues };
+      const recalcInput: PricingInput = {
+        merchantName: String(merged.merchantName),
+        annualVolume: Number(merged.annualVolume),
+        avgTransactionSize: Number(merged.avgTransactionSize),
+        cardMix: {
+          visa: Number(merged.cardMixVisa),
+          mastercard: Number(merged.cardMixMastercard),
+          amex: Number(merged.cardMixAmex),
+          other: Number(merged.cardMixOther),
+          international: Number(merged.cardMixInternational),
+          corporate: Number(merged.cardMixCorporate),
+          debit: Number(merged.cardMixDebit),
+        },
+        currentBlendedRate: Number(merged.currentBlendedRate ?? 0),
+        currentTxFee: Number(merged.currentTxFee ?? 0),
+        currentMonthlyFee: Number(merged.currentMonthlyFee ?? 0),
+        dccEligible: Boolean(merged.dccEligible),
+        dccUptake: Number(merged.dccUptake),
+        dccMarkup: Number(merged.dccMarkup),
+        propertyCount: Number(merged.propertyCount ?? 1),
+        starRating: Number(merged.starRating ?? 4),
+      };
+      updateValues.pricingResult = calculatePricing(recalcInput);
+    }
+
     await db.update(deals).set(updateValues).where(eq(deals.id, id));
 
     for (const entry of historyEntries) {
@@ -137,7 +209,9 @@ export async function deleteDeal(id: string) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
-  const [existing] = await db.select().from(deals).where(eq(deals.id, id));
+  const pf = partnerFilter(session);
+  const conditions = pf ? and(eq(deals.id, id), pf) : eq(deals.id, id);
+  const [existing] = await db.select().from(deals).where(conditions);
   if (!existing) throw new Error("Deal not found");
 
   await db
@@ -162,7 +236,9 @@ export async function updateDealStatus(id: string, newStatus: "draft" | "review"
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
-  const [existing] = await db.select().from(deals).where(eq(deals.id, id));
+  const pf = partnerFilter(session);
+  const conditions = pf ? and(eq(deals.id, id), pf) : eq(deals.id, id);
+  const [existing] = await db.select().from(deals).where(conditions);
   if (!existing) throw new Error("Deal not found");
 
   await db

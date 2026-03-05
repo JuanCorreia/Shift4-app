@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { db } from '@/lib/db';
 import { deals } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { partnerFilter } from '@/lib/db/helpers';
 import { renderProposalPdf } from '@/lib/export/pdf';
 
 export async function GET(request: NextRequest) {
@@ -17,7 +18,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'dealId is required' }, { status: 400 });
     }
 
-    const [deal] = await db.select().from(deals).where(eq(deals.id, dealId));
+    const pf = partnerFilter(session);
+    const conditions = pf ? and(eq(deals.id, dealId), pf) : eq(deals.id, dealId);
+    const [deal] = await db.select().from(deals).where(conditions);
     if (!deal) {
       return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
     }

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users, teamSettings } from "@/lib/db/schema";
-import { createSession } from "@/lib/auth/session";
+import { users, teamSettings, partners } from "@/lib/db/schema";
 import { loginSchema } from "@/lib/validators/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { createOtp } from "@/lib/auth/otp";
+import { sendOtpEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,6 +45,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Resolve partner from team_settings
+    const partnerId = team[0].partnerId;
+
     // Find existing user or create new one
     const existingUser = await db
       .select()
@@ -54,28 +58,40 @@ export async function POST(request: NextRequest) {
     let user;
 
     if (existingUser.length > 0) {
-      // Existing user — don't overwrite their name or role
       user = existingUser[0];
+      // Update partner_id if not set (backfill existing users)
+      if (!user.partnerId) {
+        await db
+          .update(users)
+          .set({ partnerId, updatedAt: new Date() })
+          .where(eq(users.id, user.id));
+        user = { ...user, partnerId };
+      }
     } else {
-      // Create new user
       const created = await db
         .insert(users)
-        .values({ name, email, inviteCode, role: "analyst" })
+        .values({ name, email, inviteCode, partnerId, role: "analyst" })
         .returning();
       user = created[0];
     }
 
-    // Create session
-    await createSession({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    });
+    // Generate and send OTP
+    const code = await createOtp(user.id, user.email);
+
+    try {
+      await sendOtpEmail(user.email, code, user.name);
+    } catch (emailErr) {
+      console.error("Failed to send OTP email:", emailErr);
+      return NextResponse.json(
+        { error: "Failed to send verification email. Check SMTP settings." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
-      success: true,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      requireOtp: true,
+      email: user.email,
+      message: "Verification code sent to your email.",
     });
   } catch (error) {
     console.error("Login error:", error);

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { users, teamSettings } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { ShieldAlert } from "lucide-react";
 import SettingsClient from "./SettingsClient";
 
@@ -12,7 +13,7 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  if (session.role !== "admin") {
+  if (session.role !== "admin" && session.role !== "super_admin") {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-50 mb-4">
@@ -26,9 +27,23 @@ export default async function SettingsPage() {
     );
   }
 
-  const allUsers = await db.select().from(users).orderBy(users.createdAt);
+  // Scope users and settings to partner (super_admin sees all)
+  const isSuperAdmin = session.role === "super_admin";
+  const allUsers = isSuperAdmin
+    ? await db.select().from(users).orderBy(users.createdAt)
+    : await db
+        .select()
+        .from(users)
+        .where(eq(users.partnerId, session.partnerId!))
+        .orderBy(users.createdAt);
 
-  const settings = await db.select().from(teamSettings).limit(1);
+  const settings = isSuperAdmin
+    ? await db.select().from(teamSettings).limit(1)
+    : await db
+        .select()
+        .from(teamSettings)
+        .where(eq(teamSettings.partnerId, session.partnerId!))
+        .limit(1);
   const team = settings[0] ?? null;
 
   return (

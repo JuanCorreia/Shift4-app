@@ -1,9 +1,12 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET environment variable is required");
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET environment variable is required");
+  }
+  return secret;
 }
 const COOKIE_NAME = "shift4_session";
 const SEVEN_DAYS = 60 * 60 * 24 * 7;
@@ -13,15 +16,17 @@ export interface SessionPayload {
   email: string;
   name: string;
   role: string;
+  partnerId: string | null;
+  partnerName?: string;
 }
 
 export function createToken(payload: SessionPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: SEVEN_DAYS });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: SEVEN_DAYS });
 }
 
 export function verifyToken(token: string): SessionPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as SessionPayload;
+    return jwt.verify(token, getJwtSecret()) as SessionPayload;
   } catch {
     return null;
   }

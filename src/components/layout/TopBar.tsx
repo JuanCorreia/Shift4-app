@@ -9,9 +9,10 @@ import { ROLES } from "@/lib/constants";
 interface TopBarProps {
   userName: string;
   userRole: string;
+  partnerName?: string;
 }
 
-export default function TopBar({ userName, userRole }: TopBarProps) {
+export default function TopBar({ userName, userRole, partnerName }: TopBarProps) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -34,8 +35,13 @@ export default function TopBar({ userName, userRole }: TopBarProps) {
         </button>
       </div>
 
-      {/* Right: user info + logout */}
+      {/* Right: partner badge + user info + logout */}
       <div className="flex items-center gap-4">
+        {partnerName && (
+          <span className="hidden sm:inline-flex items-center px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full">
+            {partnerName}
+          </span>
+        )}
         <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="hidden sm:block text-right">
             <p className="text-sm font-medium text-slate-700">{userName}</p>

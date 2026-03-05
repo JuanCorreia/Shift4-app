@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { deals, escalations } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { partnerFilter } from "@/lib/db/helpers";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Building2, MapPin, Star, CreditCard, TrendingUp, History, AlertTriangle, FileText, ExternalLink } from "lucide-react";
@@ -39,7 +40,9 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
   const { id } = params;
   const activeTab: TabKey = (searchParams.tab as TabKey) || 'overview';
 
-  const [deal] = await db.select().from(deals).where(eq(deals.id, id));
+  const pf = partnerFilter(session);
+  const dealConditions = pf ? and(eq(deals.id, id), pf) : eq(deals.id, id);
+  const [deal] = await db.select().from(deals).where(dealConditions);
   if (!deal) notFound();
 
   // Count unresolved escalations for badge

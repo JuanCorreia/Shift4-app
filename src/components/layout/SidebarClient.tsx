@@ -3,18 +3,19 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, PlusCircle, Settings, Zap, X } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Settings, Building2, Zap, X } from "lucide-react";
 
 const iconMap = {
   LayoutDashboard,
   PlusCircle,
   Settings,
+  Building2,
 } as const;
 
 interface NavItem {
   label: string;
   href: string;
-  icon: keyof typeof iconMap;
+  icon: keyof typeof iconMap | string;
 }
 
 interface SidebarClientProps {
@@ -27,14 +28,15 @@ export default function SidebarClient({ navItems, role }: SidebarClientProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const filteredItems = navItems.filter((item) => {
-    if (item.href === "/settings" && role !== "admin") return false;
+    if (item.href === "/settings" && role !== "admin" && role !== "super_admin") return false;
+    if (item.href === "/partners" && role !== "super_admin") return false;
     return true;
   });
 
   const navContent = (
     <nav className="flex-1 px-3 py-4 space-y-1">
       {filteredItems.map((item) => {
-        const Icon = iconMap[item.icon];
+        const Icon = iconMap[item.icon as keyof typeof iconMap];
         const isActive =
           item.href === "/"
             ? pathname === "/"

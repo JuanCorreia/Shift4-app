@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { deals } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { partnerFilter } from '@/lib/db/helpers';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Calculator } from 'lucide-react';
@@ -19,7 +20,9 @@ export default async function ProposalPage({ params }: ProposalPageProps) {
 
   const { id } = params;
 
-  const [deal] = await db.select().from(deals).where(eq(deals.id, id));
+  const pf = partnerFilter(session);
+  const dealConditions = pf ? and(eq(deals.id, id), pf) : eq(deals.id, id);
+  const [deal] = await db.select().from(deals).where(dealConditions);
 
   if (!deal) notFound();
 

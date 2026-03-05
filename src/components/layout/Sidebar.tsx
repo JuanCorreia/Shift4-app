@@ -9,7 +9,7 @@ export default async function Sidebar() {
   const navItems = NAV_ITEMS.map((item) => ({
     label: item.label,
     href: item.href,
-    icon: item.icon as "LayoutDashboard" | "PlusCircle" | "Settings",
+    icon: item.icon,
   }));
 
   return <SidebarClient navItems={navItems} role={role} />;

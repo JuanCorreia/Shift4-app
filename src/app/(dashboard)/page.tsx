@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { deals, escalations } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
+import { partnerFilter } from "@/lib/db/helpers";
 import {
   FileText,
   Clock,
@@ -35,46 +36,51 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   const page = Number(searchParams.page) || 1;
   const sort = searchParams.sort || "newest";
 
+  // Partner scoping
+  const pf = partnerFilter(session);
+
   // Fetch stats from DB - counts by status
   const [totalDeals] = await db
     .select({ count: sql<number>`count(*)` })
-    .from(deals);
+    .from(deals)
+    .where(pf);
 
   const [draftDeals] = await db
     .select({ count: sql<number>`count(*)` })
     .from(deals)
-    .where(eq(deals.status, "draft"));
+    .where(and(eq(deals.status, "draft"), pf));
 
   const [reviewDeals] = await db
     .select({ count: sql<number>`count(*)` })
     .from(deals)
-    .where(eq(deals.status, "review"));
+    .where(and(eq(deals.status, "review"), pf));
 
   const [approvedDeals] = await db
     .select({ count: sql<number>`count(*)` })
     .from(deals)
-    .where(eq(deals.status, "approved"));
+    .where(and(eq(deals.status, "approved"), pf));
 
   const [sentDeals] = await db
     .select({ count: sql<number>`count(*)` })
     .from(deals)
-    .where(eq(deals.status, "sent"));
+    .where(and(eq(deals.status, "sent"), pf));
 
   const [archivedDeals] = await db
     .select({ count: sql<number>`count(*)` })
     .from(deals)
-    .where(eq(deals.status, "archived"));
+    .where(and(eq(deals.status, "archived"), pf));
 
   const [volumeResult] = await db
     .select({ total: sql<string>`coalesce(sum(annual_volume), 0)` })
-    .from(deals);
+    .from(deals)
+    .where(pf);
 
   const [savingsResult] = await db
     .select({
       avg: sql<string>`coalesce(avg((pricing_result->>'savingsPercent')::numeric), 0)`,
     })
     .from(deals)
-    .where(sql`pricing_result is not null and pricing_result->>'savingsPercent' is not null`);
+    .where(and(sql`pricing_result is not null and pricing_result->>'savingsPercent' is not null`, pf));
 
   // Escalation alerts: count deals with unresolved escalations
   const dealsWithEscalations = await db

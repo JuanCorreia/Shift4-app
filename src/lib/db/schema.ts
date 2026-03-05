@@ -11,13 +11,25 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 
-export const roleEnum = pgEnum("user_role", ["analyst", "admin", "viewer"]);
+export const roleEnum = pgEnum("user_role", ["analyst", "admin", "viewer", "super_admin"]);
+
+// Partners table
+export const partners = pgTable("partners", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
+  logoUrl: varchar("logo_url", { length: 500 }),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   role: roleEnum("role").notNull().default("analyst"),
+  partnerId: uuid("partner_id").references(() => partners.id),
   inviteCode: varchar("invite_code", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -25,6 +37,7 @@ export const users = pgTable("users", {
 
 export const teamSettings = pgTable("team_settings", {
   id: uuid("id").defaultRandom().primaryKey(),
+  partnerId: uuid("partner_id").references(() => partners.id).notNull(),
   inviteCode: varchar("invite_code", { length: 255 }).notNull().unique(),
   teamName: varchar("team_name", { length: 255 }).notNull(),
   anthropicApiKey: varchar("anthropic_api_key", { length: 255 }),
@@ -32,6 +45,8 @@ export const teamSettings = pgTable("team_settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export type Partner = typeof partners.$inferSelect;
+export type NewPartner = typeof partners.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type TeamSettings = typeof teamSettings.$inferSelect;
@@ -88,6 +103,7 @@ export const deals = pgTable('deals', {
 
   // Status & ownership
   status: dealStatusEnum('status').default('draft').notNull(),
+  partnerId: uuid('partner_id').references(() => partners.id).notNull(),
   createdBy: uuid('created_by').references(() => users.id),
   assignedTo: uuid('assigned_to').references(() => users.id),
 
@@ -120,6 +136,19 @@ export const escalations = pgTable('escalations', {
   resolvedAt: timestamp('resolved_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// OTP codes for MFA
+export const otpCodes = pgTable('otp_codes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  code: varchar('code', { length: 6 }).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  used: boolean('used').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type OtpCode = typeof otpCodes.$inferSelect;
 
 // Inferred types for deals
 export type Deal = typeof deals.$inferSelect;

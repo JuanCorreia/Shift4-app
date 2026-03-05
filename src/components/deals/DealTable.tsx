@@ -4,6 +4,8 @@ import { eq, like, desc, asc, sql, and, gte, lte, SQL } from "drizzle-orm";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
+import { getSession } from "@/lib/auth/session";
+import { partnerFilter } from "@/lib/db/helpers";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -43,8 +45,13 @@ export async function DealTable({
   from,
   to,
 }: DealTableProps) {
-  // Build where conditions
+  // Partner scoping
+  const session = await getSession();
   const conditions: SQL[] = [];
+  if (session) {
+    const pf = partnerFilter(session);
+    if (pf) conditions.push(pf);
+  }
 
   if (status && status !== "all") {
     conditions.push(eq(deals.status, status as "draft" | "review" | "approved" | "sent" | "archived"));
