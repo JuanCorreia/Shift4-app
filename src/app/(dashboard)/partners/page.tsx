@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { partners, teamSettings, users, deals } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { ShieldAlert, Building2 } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import PartnersClient from "./PartnersClient";
 
 export default async function PartnersPage() {

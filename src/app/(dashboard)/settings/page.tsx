@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { users, teamSettings } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { ShieldAlert } from "lucide-react";
 import SettingsClient from "./SettingsClient";
 

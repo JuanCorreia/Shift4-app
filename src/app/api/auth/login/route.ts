@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users, teamSettings, partners } from "@/lib/db/schema";
+import { users, teamSettings } from "@/lib/db/schema";
 import { loginSchema } from "@/lib/validators/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { createOtp } from "@/lib/auth/otp";
