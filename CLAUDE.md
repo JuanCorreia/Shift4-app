@@ -14,7 +14,9 @@ Next.js 14 app for Banyan's hospitality payments team. Automates merchant statem
 - **Deployment:** Vercel (production), Docker Compose (local)
 
 ## Key Architecture Decisions
-- **Auth model:** Shared team invite code (not per-user passwords). Users provide code + name/email → get JWT.
+- **Multi-partner tenancy:** `partners` table, `partner_id` FK on users/deals/team_settings. All queries scoped via `partnerFilter()` helper in `src/lib/db/helpers.ts`. Super admins bypass filters.
+- **Auth model:** Shared team invite code per partner (not per-user passwords). Users provide code + name/email → get JWT with `partnerId` + `partnerName`.
+- **Roles:** `super_admin` | `admin` | `analyst` | `viewer`. Super admin sees all partners; admin manages their own partner; analyst/viewer scoped to partner deals.
 - **Pricing engine:** Pure TypeScript in `src/lib/pricing/` — zero side effects, zero DB/API imports. Runs client-side for instant feedback, server-side on submit for validation.
 - **Lazy initialization:** DB, Supabase, and Anthropic clients use lazy init (Proxy pattern for DB) to avoid build-time crashes in standalone Next.js output.
 - **Edge Runtime limitation:** `src/middleware.ts` uses cookie-existence check only (no JWT verify) because `jsonwebtoken` doesn't work in Edge Runtime.
@@ -39,10 +41,13 @@ src/
 │   │   ├── deals/             # Deal list, new deal, deal detail
 │   │   │   ├── new/wizard/    # Mode B: guided wizard
 │   │   │   └── new/statement/ # Mode A: PDF upload + OCR
+│   │   ├── partners/           # Partner management (super_admin only)
 │   │   ├── profile/           # User profile page
 │   │   └── settings/          # Admin settings (invite code, API key, roles)
 │   └── api/
-│       ├── auth/login/        # Login endpoint
+│       ├── auth/login/        # Login endpoint (resolves partner from invite code)
+│       ├── auth/verify-otp/   # OTP verification (sets partnerId in session)
+│       ├── partners/          # Partner CRUD (super_admin only)
 │       ├── ai/                # OCR, narrative, research endpoints
 │       ├── export/            # PDF/DOCX export
 │       ├── profile/           # Profile update
@@ -57,8 +62,8 @@ src/
 │   └── proposal/              # ProposalPreview
 └── lib/
     ├── ai/                    # Anthropic client, OCR, narrative, research
-    ├── auth/                  # JWT session, password utils
-    ├── db/                    # Drizzle schema + client
+    ├── auth/                  # JWT session, OTP
+    ├── db/                    # Drizzle schema + client + helpers (partnerFilter)
     ├── export/                # PDF/DOCX generators
     ├── pricing/               # Pure TS pricing engine (5 tiers, DCC, escalations)
     ├── supabase/              # Supabase client + storage helpers
@@ -97,9 +102,18 @@ docker compose up    # Run with Docker (port 8000)
 - **Invite code:** `shift4team`
 - **Admin user:** admin@shift4.com
 
+## Multi-Partner Tenancy
+- `partners` table: id, name, slug, logo_url, active
+- `users.partner_id` (nullable for super_admin), `deals.partner_id` (NOT NULL), `team_settings.partner_id` (NOT NULL)
+- Default partner: "Host Hotel Systems" (slug: `host`)
+- `partnerFilter(session)` in `src/lib/db/helpers.ts` — returns `undefined` for super_admin, `eq(deals.partnerId, ...)` for others
+- Session JWT: `{ userId, email, name, role, partnerId, partnerName }`
+- Stale session guard in dashboard layout: clears cookie + redirects if `partnerId` missing
+
 ## Important Notes
 - Dashboard route is at `/` (not `/dashboard`) — uses `(dashboard)` route group
 - Never commit `.env` files or API keys
 - Rate limiting on AI routes (in-memory, no Redis)
 - All AI routes require auth session
 - User-visible branding says "Banyan Payment Gateway"; internal variable names still use `shift4` prefix
+- ESLint strict on unused imports — Vercel build fails on unused vars
