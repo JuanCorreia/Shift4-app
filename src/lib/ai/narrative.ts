@@ -41,7 +41,7 @@ function buildNarrativePrompt(data: NarrativeInput): string {
     if (data.currentMonthlyFee) prompt += `Current Monthly Fee: EUR ${data.currentMonthlyFee}\n`;
   }
 
-  prompt += `\nSHIFT4 PROPOSED PRICING:\n`;
+  prompt += `\nBANYAN PROPOSED PRICING:\n`;
   prompt += `Tier: ${pr.tierName} (Tier ${pr.tier})\n`;
   prompt += `Proposed Rate: ${pr.adjustedRate} bps\n`;
   prompt += `Proposed Transaction Fee: EUR ${pr.proposedTxFee}\n`;

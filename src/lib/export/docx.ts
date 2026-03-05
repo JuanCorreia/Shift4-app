@@ -76,13 +76,13 @@ export async function generateProposalDocx(deal: Deal): Promise<Buffer> {
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new TextRun({ text: 'SHIFT4', bold: true, size: 72, color: SHIFT4_BLUE, font: 'Calibri' }),
+          new TextRun({ text: 'BANYAN', bold: true, size: 72, color: SHIFT4_BLUE, font: 'Calibri' }),
         ],
       }),
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new TextRun({ text: 'Payment Technology Solutions', size: 24, color: '6b7280', font: 'Calibri' }),
+          new TextRun({ text: 'Payment Gateway Solutions', size: 24, color: '6b7280', font: 'Calibri' }),
         ],
         spacing: { after: 600 },
       }),
@@ -267,7 +267,7 @@ export async function generateProposalDocx(deal: Deal): Promise<Buffer> {
         new TableRow({ children: [dataCell('Projected Uptake', true, true), dataCell(`${(pricing.dccRevenue.projectedUptake * 100).toFixed(0)}%`, false, true)] }),
         new TableRow({ children: [dataCell('Annual DCC Revenue', true), dataCell(formatEur(pricing.dccRevenue.annualRevenue))] }),
         new TableRow({ children: [dataCell('Merchant Revenue Share', true, true), dataCell(formatEur(pricing.dccRevenue.revenueShareMerchant), true, true)] }),
-        new TableRow({ children: [dataCell('Shift4 Revenue Share', true), dataCell(formatEur(pricing.dccRevenue.revenueShareShift4))] }),
+        new TableRow({ children: [dataCell('Banyan Revenue Share', true), dataCell(formatEur(pricing.dccRevenue.revenueShareShift4))] }),
       ],
     });
     contentChildren.push(dccTable);
@@ -292,7 +292,7 @@ export async function generateProposalDocx(deal: Deal): Promise<Buffer> {
     'DCC revenue projections are estimates based on industry averages and are not guaranteed.',
     'All fees are exclusive of applicable taxes and regulatory charges.',
     'Contract terms and settlement schedules to be defined in the final merchant agreement.',
-    'Shift4 reserves the right to adjust pricing based on risk assessment and compliance review.',
+    'Banyan reserves the right to adjust pricing based on risk assessment and compliance review.',
   ];
 
   for (let i = 0; i < terms.length; i++) {

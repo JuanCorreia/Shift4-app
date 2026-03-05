@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     const buffer = await renderProposalPdf(deal);
-    const filename = `Shift4_Proposal_${deal.merchantName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    const filename = `Banyan_Proposal_${deal.merchantName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {

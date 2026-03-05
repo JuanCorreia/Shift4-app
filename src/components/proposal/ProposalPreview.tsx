@@ -86,7 +86,7 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Shift4_Proposal_${deal.merchantName.replace(/[^a-zA-Z0-9]/g, '_')}.${format}`;
+      a.download = `Banyan_Proposal_${deal.merchantName.replace(/[^a-zA-Z0-9]/g, '_')}.${format}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -159,8 +159,8 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         {/* Cover section */}
         <div className="bg-[#395542] text-white px-10 py-16 text-center">
-          <p className="text-4xl font-bold tracking-wider mb-1">SHIFT4</p>
-          <p className="text-sm text-gray-300 mb-10">Payment Technology Solutions</p>
+          <p className="text-4xl font-bold tracking-wider mb-1">BANYAN</p>
+          <p className="text-sm text-gray-300 mb-10">Payment Gateway Solutions</p>
           <div className="w-16 h-0.5 bg-[#CF987E] mx-auto mb-10" />
           <h1 className="text-3xl font-bold mb-3">Commercial Proposal</h1>
           <p className="text-xl text-gray-200">{deal.merchantName}</p>
@@ -330,14 +330,14 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
               <li>DCC revenue projections are estimates based on industry averages and are not guaranteed.</li>
               <li>All fees are exclusive of applicable taxes and regulatory charges.</li>
               <li>Contract terms and settlement schedules to be defined in the final merchant agreement.</li>
-              <li>Shift4 reserves the right to adjust pricing based on risk assessment and compliance review.</li>
+              <li>Banyan reserves the right to adjust pricing based on risk assessment and compliance review.</li>
             </ol>
           </section>
         </div>
 
         {/* Footer */}
         <div className="border-t border-gray-200 px-10 py-4 flex justify-between text-xs text-gray-400">
-          <span>Shift4 -- Confidential</span>
+          <span>Banyan -- Confidential</span>
           <span>{date}</span>
         </div>
       </div>

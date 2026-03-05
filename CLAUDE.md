@@ -1,17 +1,17 @@
-# Shift4 Hospitality — Statement Review & Proposal Engine
+# Banyan Payment Gateway — Statement Review & Proposal Engine
 
 ## Project Overview
-Next.js 14 app for Shift4's hospitality payments team. Automates merchant statement analysis, pricing tier determination, DCC modelling, and proposal generation.
+Next.js 14 app for Banyan's hospitality payments team. Automates merchant statement analysis, pricing tier determination, DCC modelling, and proposal generation.
 
 ## Tech Stack
 - **Framework:** Next.js 14 (App Router), React 18, TypeScript
 - **Styling:** Tailwind CSS 3.4 with Banyan Software brand colors
-- **Database:** PostgreSQL 16 via Drizzle ORM (postgres-js driver)
+- **Database:** PostgreSQL 16 via Drizzle ORM (postgres-js driver) — Neon (production), Docker (local)
 - **AI:** Anthropic Claude API (OCR, narrative, hotel research)
 - **Storage:** Supabase (PDF statement uploads)
 - **Export:** React PDF (@react-pdf/renderer) + DOCX (docx package)
 - **Auth:** JWT (HTTP-only cookie `shift4_session`, 7-day expiry)
-- **Deployment:** Docker Compose (app + PostgreSQL)
+- **Deployment:** Vercel (production), Docker Compose (local)
 
 ## Key Architecture Decisions
 - **Auth model:** Shared team invite code (not per-user passwords). Users provide code + name/email → get JWT.
@@ -25,6 +25,11 @@ Next.js 14 app for Shift4's hospitality payments team. Automates merchant statem
 - Accent: `#CF987E` (warm tan)
 - CSS variables in `globals.css`: primary `147 22% 27%`, secondary `18 40% 65%`
 
+## Deployment
+- **Production:** Vercel at `shift4-app.vercel.app` (auto-deploys from GitHub `JuanCorreia/Shift4-app`)
+- **Database:** Neon PostgreSQL (`sparkling-leaf-90360563`, org `org-aged-dawn-55264654`)
+- **Local:** `docker compose up` on port 8000
+
 ## Project Structure
 ```
 src/
@@ -34,11 +39,13 @@ src/
 │   │   ├── deals/             # Deal list, new deal, deal detail
 │   │   │   ├── new/wizard/    # Mode B: guided wizard
 │   │   │   └── new/statement/ # Mode A: PDF upload + OCR
+│   │   ├── profile/           # User profile page
 │   │   └── settings/          # Admin settings (invite code, API key, roles)
 │   └── api/
 │       ├── auth/login/        # Login endpoint
 │       ├── ai/                # OCR, narrative, research endpoints
 │       ├── export/            # PDF/DOCX export
+│       ├── profile/           # Profile update
 │       ├── settings/          # Invite code, user role, API key
 │       └── upload/            # Statement upload
 ├── components/
@@ -86,7 +93,7 @@ docker compose up    # Run with Docker (port 8000)
 - `NEXT_PUBLIC_SUPABASE_URL` — Public Supabase URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Public Supabase anon key
 
-## Test Credentials (Docker)
+## Test Credentials
 - **Invite code:** `shift4team`
 - **Admin user:** admin@shift4.com
 
@@ -95,3 +102,4 @@ docker compose up    # Run with Docker (port 8000)
 - Never commit `.env` files or API keys
 - Rate limiting on AI routes (in-memory, no Redis)
 - All AI routes require auth session
+- User-visible branding says "Banyan Payment Gateway"; internal variable names still use `shift4` prefix

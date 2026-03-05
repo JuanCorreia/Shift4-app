@@ -1,4 +1,4 @@
-export const APP_NAME = 'Shift4 Hospitality';
+export const APP_NAME = 'Banyan Payment Gateway';
 
 export const ROLES = {
   admin: 'Admin',

@@ -247,7 +247,7 @@ export default function StatementPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-1">Pricing Results</h2>
             <p className="text-sm text-gray-500 mb-6">
-              Based on the extracted statement data, here is the Shift4 pricing proposal.
+              Based on the extracted statement data, here is the Banyan pricing proposal.
             </p>
             <PricingBreakdown result={pricingResult} />
 

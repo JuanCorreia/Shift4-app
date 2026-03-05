@@ -68,7 +68,7 @@ export default function SidebarClient({ navItems, role }: SidebarClientProps) {
             <Zap className="h-4 w-4 text-white" />
           </div>
           <span className="text-lg font-bold text-white tracking-tight">
-            Shift4
+            Banyan
           </span>
         </div>
         {navContent}
@@ -94,7 +94,7 @@ export default function SidebarClient({ navItems, role }: SidebarClientProps) {
               <Zap className="h-4 w-4 text-white" />
             </div>
             <span className="text-lg font-bold text-white tracking-tight">
-              Shift4
+              Banyan
             </span>
           </div>
           <button

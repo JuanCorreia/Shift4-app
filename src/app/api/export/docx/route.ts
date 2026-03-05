@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     const buffer = await generateProposalDocx(deal);
-    const filename = `Shift4_Proposal_${deal.merchantName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+    const filename = `Banyan_Proposal_${deal.merchantName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {

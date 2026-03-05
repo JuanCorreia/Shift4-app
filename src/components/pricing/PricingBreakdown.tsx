@@ -122,7 +122,7 @@ export default function PricingBreakdown({ result }: PricingBreakdownProps) {
               <div className="font-semibold text-purple-900">{fmt(result.dccRevenue.revenueShareMerchant)}</div>
             </div>
             <div>
-              <div className="text-purple-600">Shift4 Share</div>
+              <div className="text-purple-600">Banyan Share</div>
               <div className="font-semibold text-purple-900">{fmt(result.dccRevenue.revenueShareShift4)}</div>
             </div>
           </div>

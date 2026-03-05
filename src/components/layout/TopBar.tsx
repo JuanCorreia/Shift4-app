@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Menu, LogOut } from "lucide-react";
 import { openMobileMenu } from "./SidebarClient";
 import { ROLES } from "@/lib/constants";
@@ -35,7 +36,7 @@ export default function TopBar({ userName, userRole }: TopBarProps) {
 
       {/* Right: user info + logout */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
+        <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="hidden sm:block text-right">
             <p className="text-sm font-medium text-slate-700">{userName}</p>
             <p className="text-xs text-slate-500">{roleLabel}</p>
@@ -43,7 +44,7 @@ export default function TopBar({ userName, userRole }: TopBarProps) {
           <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
             {userName.charAt(0).toUpperCase()}
           </div>
-        </div>
+        </Link>
         <button
           onClick={handleLogout}
           className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-100 transition-colors"

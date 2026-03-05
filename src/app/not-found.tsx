@@ -6,7 +6,7 @@ export default function NotFound() {
       <div className="text-center max-w-md">
         {/* Brand mark */}
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#395542] mb-8">
-          <span className="text-2xl font-bold text-white">S4</span>
+          <span className="text-2xl font-bold text-white">B</span>
         </div>
 
         <h1 className="text-6xl font-bold text-[#395542] mb-3">404</h1>
@@ -33,7 +33,7 @@ export default function NotFound() {
         </div>
 
         <p className="mt-12 text-xs text-slate-400">
-          Shift4 Payments Deal Management
+          Banyan Payment Gateway
         </p>
       </div>
     </div>

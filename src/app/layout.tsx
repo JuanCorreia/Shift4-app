@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Shift4 Hospitality",
+  title: "Banyan Payment Gateway",
   description:
     "Payment processing deal analysis and proposal generation for hospitality.",
 };
