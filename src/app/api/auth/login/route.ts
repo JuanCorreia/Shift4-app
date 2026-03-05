@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users, teamSettings } from "@/lib/db/schema";
+import { users, teamSettings, partners } from "@/lib/db/schema";
 import { loginSchema } from "@/lib/validators/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { createOtp } from "@/lib/auth/otp";
-import { sendOtpEmail } from "@/lib/email";
+import { createSession } from "@/lib/auth/session";
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,23 +74,30 @@ export async function POST(request: NextRequest) {
       user = created[0];
     }
 
-    // Generate and send OTP
-    const code = await createOtp(user.id, user.email);
-
-    try {
-      await sendOtpEmail(user.email, code, user.name);
-    } catch (emailErr) {
-      console.error("Failed to send OTP email:", emailErr);
-      return NextResponse.json(
-        { error: "Failed to send verification email. Check SMTP settings." },
-        { status: 500 }
-      );
+    // Resolve partner name
+    let partnerName: string | undefined;
+    if (user.partnerId) {
+      const [partner] = await db
+        .select({ name: partners.name })
+        .from(partners)
+        .where(eq(partners.id, user.partnerId))
+        .limit(1);
+      partnerName = partner?.name;
     }
 
-    return NextResponse.json({
-      requireOtp: true,
+    // Create session directly (MFA disabled)
+    await createSession({
+      userId: user.id,
       email: user.email,
-      message: "Verification code sent to your email.",
+      name: user.name,
+      role: user.role,
+      partnerId: user.partnerId,
+      partnerName,
+    });
+
+    return NextResponse.json({
+      success: true,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
     });
   } catch (error) {
     console.error("Login error:", error);
