@@ -13,6 +13,6 @@ export type {
 
 export { calculatePricing } from './engine';
 export { getTier, getTierDefinition, TIER_DEFINITIONS } from './tiers';
-export { estimateMargin } from './margin';
+export { estimateMargin, estimateInterchangeCost } from './margin';
 export { calculateDccRevenue } from './dcc';
 export { generateEscalations } from './escalation';

@@ -93,22 +93,24 @@ export default function PricingBreakdown({ result }: PricingBreakdownProps) {
         </div>
       </div>
 
-      {/* Rate breakdown */}
+      {/* Rate breakdown — IC++ structure */}
       <div className="bg-white rounded-xl p-5 border border-gray-200">
-        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Rate Breakdown</div>
+        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Rate Breakdown (IC++)</div>
         <div className="space-y-3">
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-600">Base Rate (Tier {result.tier})</span>
-            <span className="font-semibold text-gray-900">{fmtBps(result.baseRate)}</span>
+            <span className="text-gray-600">Interchange (weighted)</span>
+            <span className="font-semibold text-gray-900">{fmtBps(result.marginEstimate.interchangeCost)}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-600">Card Mix Adjustments</span>
-            <span className={`font-semibold ${result.adjustedRate - result.baseRate >= 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-              {result.adjustedRate - result.baseRate >= 0 ? '+' : ''}{fmtBps(result.adjustedRate - result.baseRate)}
-            </span>
+            <span className="text-gray-600">Scheme Fees</span>
+            <span className="font-semibold text-gray-900">{fmtBps(result.marginEstimate.schemeFees)}</span>
           </div>
           <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-100">
-            <span className="font-semibold text-gray-900">Final Rate</span>
+            <span className="text-gray-600">Banyan Markup (Tier {result.tier})</span>
+            <span className="font-semibold text-emerald-700">{fmtBps(result.marginEstimate.margin)}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-200">
+            <span className="font-semibold text-gray-900">Total Merchant Rate</span>
             <span className="font-bold text-gray-900">{fmtBps(result.adjustedRate)}</span>
           </div>
         </div>

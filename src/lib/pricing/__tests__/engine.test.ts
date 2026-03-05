@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { calculatePricing } from '../engine';
 import { getTier, getTierDefinition } from '../tiers';
-import { estimateMargin } from '../margin';
+import { estimateMargin, estimateInterchangeCost } from '../margin';
 import { calculateDccRevenue } from '../dcc';
 import type { PricingInput, CardMix } from '../types';
 
@@ -27,7 +27,7 @@ function defaultInput(overrides: Partial<PricingInput> = {}): PricingInput {
     annualVolume: 10_000_000,
     avgTransactionSize: 200,
     cardMix: defaultCardMix(),
-    currentBlendedRate: 50,
+    currentBlendedRate: 120, // realistic blended rate (1.2%) for IC++ model
     currentTxFee: 0.10,
     currentMonthlyFee: 100,
     dccEligible: false,
@@ -39,6 +39,10 @@ function defaultInput(overrides: Partial<PricingInput> = {}): PricingInput {
     ...overrides,
   };
 }
+
+// Default card mix IC: 10% amex(150) + 90% non-amex(33% debit(20) + 67% credit(30))
+// = 15 + 0.90 * 26.67 = 15 + 24 = 39bps interchange, +8 scheme = 47bps total cost
+// Tier 3 markup = 32bps → total merchant rate = 47 + 32 = 79bps
 
 // --- Tier Tests ---
 
@@ -95,7 +99,7 @@ describe('getTierDefinition', () => {
   });
 });
 
-// --- Engine Tests ---
+// --- Engine Tests (IC++ model) ---
 
 describe('calculatePricing', () => {
   it('calculates a standard Tier 3 hotel correctly', () => {
@@ -105,43 +109,46 @@ describe('calculatePricing', () => {
     expect(result.tier).toBe(3);
     expect(result.tierName).toBe('Professional');
     expect(result.baseRate).toBe(32);
-    expect(result.adjustedRate).toBe(32); // no adjustments at default mix
+    // IC++ model: adjustedRate = IC(39) + scheme(8) + markup(32) = 79bps total merchant rate
+    expect(result.adjustedRate).toBe(79);
     expect(result.proposedTxFee).toBe(0.06);
     expect(result.proposedMonthlyFee).toBe(75);
+    // Margin should be the markup (32bps), always positive
+    expect(result.marginEstimate.margin).toBe(32);
+    expect(result.marginEstimate.healthy).toBe(true);
   });
 
   it('calculates annual costs correctly', () => {
     const input = defaultInput({
       annualVolume: 10_000_000,
       avgTransactionSize: 200,
-      currentBlendedRate: 50,
+      currentBlendedRate: 120, // 1.2% blended (realistic IC++ comparison)
       currentTxFee: 0.10,
       currentMonthlyFee: 100,
       propertyCount: 1,
     });
     const result = calculatePricing(input);
 
-    // Current cost: 10M * 50/10000 + 50000 * 0.10 + 100 * 12 * 1
-    // = 50000 + 5000 + 1200 = 56200
-    expect(result.annualCostCurrent).toBe(56200);
+    // Current cost: 10M * 120/10000 + 50000 * 0.10 + 100 * 12 * 1
+    // = 120000 + 5000 + 1200 = 126200
+    expect(result.annualCostCurrent).toBe(126200);
 
-    // Proposed cost: 10M * 32/10000 + 50000 * 0.06 + 75 * 12 * 1
-    // = 32000 + 3000 + 900 = 35900
-    expect(result.annualCostProposed).toBe(35900);
+    // Proposed cost: 10M * 79/10000 + 50000 * 0.06 + 75 * 12 * 1
+    // = 79000 + 3000 + 900 = 82900
+    expect(result.annualCostProposed).toBe(82900);
 
-    expect(result.annualSavings).toBe(20300);
-    expect(result.savingsPercent).toBeCloseTo(36.12, 1);
+    expect(result.annualSavings).toBe(43300);
+    expect(result.savingsPercent).toBeCloseTo(34.31, 1);
   });
 
   it('calculates multi-property costs correctly', () => {
     const input = defaultInput({ propertyCount: 5 });
     const result = calculatePricing(input);
 
-    // Proposed monthly: 75 * 12 * 5 = 4500
-    // Current monthly: 100 * 12 * 5 = 6000
     const txCount = 10_000_000 / 200;
-    const expectedCurrent = 10_000_000 * 50 / 10_000 + txCount * 0.10 + 100 * 12 * 5;
-    const expectedProposed = 10_000_000 * 32 / 10_000 + txCount * 0.06 + 75 * 12 * 5;
+    // Total merchant rate = 79bps (IC 39 + scheme 8 + markup 32)
+    const expectedCurrent = 10_000_000 * 120 / 10_000 + txCount * 0.10 + 100 * 12 * 5;
+    const expectedProposed = 10_000_000 * 79 / 10_000 + txCount * 0.06 + 75 * 12 * 5;
     expect(result.annualCostCurrent).toBe(expectedCurrent);
     expect(result.annualCostProposed).toBe(expectedProposed);
   });
@@ -152,8 +159,11 @@ describe('calculatePricing', () => {
     });
     const result = calculatePricing(input);
 
-    // (25 - 15) * 0.5 = 5bps premium
-    expect(result.adjustedRate).toBe(37);
+    // Markup: 32 + (25-15)*0.5 = 37bps
+    // IC: 25% amex(150) + 75% non-amex(debit 0.30/0.75=40% at 20, 60% credit at 30 = 26)
+    // = 37.5 + 19.5 = 57bps + 8 scheme = 65bps total cost
+    // Total merchant rate: 65 + 37 = 102bps
+    expect(result.adjustedRate).toBe(102);
   });
 
   it('applies international premium when international > 30%', () => {
@@ -162,8 +172,10 @@ describe('calculatePricing', () => {
     });
     const result = calculatePricing(input);
 
-    // (50 - 30) * 0.3 = 6bps premium
-    expect(result.adjustedRate).toBe(38);
+    // Markup: 32 + (50-30)*0.3 = 38bps
+    // IC unchanged (international doesn't affect IC): 39 + 8 = 47
+    // Total: 47 + 38 = 85bps
+    expect(result.adjustedRate).toBe(85);
   });
 
   it('applies corporate premium when corporate > 20%', () => {
@@ -172,8 +184,10 @@ describe('calculatePricing', () => {
     });
     const result = calculatePricing(input);
 
-    // (40 - 20) * 0.4 = 8bps premium
-    expect(result.adjustedRate).toBe(40);
+    // Markup: 32 + (40-20)*0.4 = 40bps
+    // IC unchanged: 47
+    // Total: 47 + 40 = 87bps
+    expect(result.adjustedRate).toBe(87);
   });
 
   it('applies debit discount when debit > 40%', () => {
@@ -182,8 +196,11 @@ describe('calculatePricing', () => {
     });
     const result = calculatePricing(input);
 
-    // (60 - 40) * 0.2 = 4bps discount
-    expect(result.adjustedRate).toBe(28);
+    // Markup: 32 - (60-40)*0.2 = 28bps
+    // IC: amex 10%(150) + 90% non-amex(debitWithin=60/90=67% at 20, 33% credit at 30 = 23.33)
+    // = 15 + 0.90*23.33 = 15 + 21 = 36bps + 8 = 44 total cost
+    // Total: 44 + 28 = 72bps
+    expect(result.adjustedRate).toBe(72);
   });
 
   it('applies multiple adjustments simultaneously', () => {
@@ -197,8 +214,11 @@ describe('calculatePricing', () => {
     });
     const result = calculatePricing(input);
 
-    // 32 + 5 + 3 + 4 - 2 = 42
-    expect(result.adjustedRate).toBe(42);
+    // Markup: 32 + 5 + 3 + 4 - 2 = 42bps
+    // IC: 25% amex(150) + 75% non-amex(debit 50/75=67% at 20, 33% at 30 = 23.33)
+    // = 37.5 + 0.75*23.33 = 37.5 + 17.5 = 55bps + 8 = 63 total cost
+    // Total: 63 + 42 = 105bps
+    expect(result.adjustedRate).toBe(105);
   });
 
   it('does not adjust rate when card mix is below thresholds', () => {
@@ -211,7 +231,8 @@ describe('calculatePricing', () => {
       }),
     });
     const result = calculatePricing(input);
-    expect(result.adjustedRate).toBe(32);
+    // Same as default: IC(47) + markup(32) = 79
+    expect(result.adjustedRate).toBe(79);
   });
 });
 
@@ -263,48 +284,69 @@ describe('calculateDccRevenue', () => {
   });
 });
 
-// --- Margin Tests ---
+// --- Margin Tests (IC++ model: margin = markup, always positive) ---
 
 describe('estimateMargin', () => {
   it('calculates margin for a standard card mix', () => {
     const mix = defaultCardMix(); // 30% debit, 10% amex
     const result = estimateMargin(32, mix);
 
-    // Interchange: 10% amex * 150bps + 90% non-amex * (30% debit * 20bps + 70% credit * 30bps)
-    // Amex portion: 0.10 * 150 = 15
-    // Non-amex interchange: 0.30 * 20 + 0.70 * 30 = 6 + 21 = 27
-    // Total interchange: 0.10 * 150 + 0.90 * 27 = 15 + 24.3 = 39.3
-    expect(result.interchangeCost).toBeCloseTo(39.3, 1);
+    // IC: 10% amex(150) + 90% non-amex(33% debit(20) + 67% credit(30) = 26.67)
+    // = 15 + 24 = 39bps
+    expect(result.interchangeCost).toBeCloseTo(39, 0);
     expect(result.schemeFees).toBe(8);
-    expect(result.totalCost).toBeCloseTo(47.3, 1);
-    // At 32bps adjusted rate, margin is negative
-    expect(result.margin).toBeCloseTo(-15.3, 1);
-    expect(result.healthy).toBe(false);
+    expect(result.totalCost).toBeCloseTo(47, 0);
+    // In IC++ model, margin IS the markup (32bps) — costs are pass-through
+    expect(result.margin).toBe(32);
+    expect(result.healthy).toBe(true);
   });
 
   it('marks margin as healthy when > 5bps', () => {
     // High rate with low-cost card mix (all debit, no amex)
-    const mix = defaultCardMix({ amex: 0, debit: 100, visa: 60, mastercard: 40 });
+    const mix = defaultCardMix({ amex: 0, debit: 100, visa: 60, mastercard: 40, mbway: 0 });
     const result = estimateMargin(45, mix);
 
-    // Interchange: 0% amex + 100% non-amex * (100% debit * 20) = 20
-    // Total cost: 20 + 8 = 28
-    // Margin: 45 - 28 = 17
+    // IC: 0% amex + 100% non-amex(100% debit * 20) = 20bps
     expect(result.interchangeCost).toBe(20);
     expect(result.totalCost).toBe(28);
-    expect(result.margin).toBe(17);
+    // Margin = markup = 45bps
+    expect(result.margin).toBe(45);
     expect(result.healthy).toBe(true);
   });
 
   it('handles 100% amex card mix', () => {
-    const mix = defaultCardMix({ amex: 100, visa: 0, mastercard: 0, other: 0, debit: 0 });
+    const mix = defaultCardMix({ amex: 100, visa: 0, mastercard: 0, other: 0, debit: 0, mbway: 0 });
     const result = estimateMargin(45, mix);
 
     // 100% amex = 150bps interchange
     expect(result.interchangeCost).toBe(150);
     expect(result.totalCost).toBe(158);
-    expect(result.margin).toBe(-113);
-    expect(result.healthy).toBe(false);
+    // Margin = markup = 45bps (IC is pass-through)
+    expect(result.margin).toBe(45);
+    expect(result.healthy).toBe(true);
+  });
+});
+
+// --- Interchange Cost Tests ---
+
+describe('estimateInterchangeCost', () => {
+  it('calculates IC for default card mix', () => {
+    const costs = estimateInterchangeCost(defaultCardMix());
+    expect(costs.interchangeCost).toBeCloseTo(39, 0);
+    expect(costs.schemeFees).toBe(8);
+    expect(costs.totalCost).toBeCloseTo(47, 0);
+  });
+
+  it('calculates IC for 100% debit', () => {
+    const costs = estimateInterchangeCost(defaultCardMix({ amex: 0, debit: 100 }));
+    expect(costs.interchangeCost).toBe(20);
+    expect(costs.totalCost).toBe(28);
+  });
+
+  it('calculates IC for 100% amex', () => {
+    const costs = estimateInterchangeCost(defaultCardMix({ amex: 100, debit: 0 }));
+    expect(costs.interchangeCost).toBe(150);
+    expect(costs.totalCost).toBe(158);
   });
 });
 
@@ -387,13 +429,15 @@ describe('generateEscalations', () => {
     expect(result.annualSavings).toBeLessThan(0);
   });
 
-  it('generates LOW_MARGIN escalation', () => {
-    // Standard mix will produce negative margin at tier 3 rates
+  it('does not generate LOW_MARGIN for standard deals (IC++ model)', () => {
+    // With IC++ model, margin = markup (32bps for Tier 3), always healthy
     const input = defaultInput();
     const result = calculatePricing(input);
 
     const lowMargin = result.escalations.find((e) => e.code === 'LOW_MARGIN');
-    expect(lowMargin).toBeDefined();
+    expect(lowMargin).toBeUndefined();
+    expect(result.marginEstimate.margin).toBe(32);
+    expect(result.marginEstimate.healthy).toBe(true);
   });
 
   it('does not generate false escalations for clean deals', () => {
@@ -401,20 +445,20 @@ describe('generateEscalations', () => {
     const input = defaultInput({
       annualVolume: 2_000_000,
       cardMix: defaultCardMix({ amex: 5, international: 10, corporate: 5, debit: 80 }),
-      currentBlendedRate: 80,
+      currentBlendedRate: 120,
       currentTxFee: 0.15,
       currentMonthlyFee: 100,
       dccEligible: false,
     });
     const result = calculatePricing(input);
 
-    // Should have savings, no HEAVY_AMEX, no HIGH_INTERNATIONAL, no UNREALISTIC_DCC, no LARGE_DEAL, no TIER1_REVIEW
     expect(result.escalations.find((e) => e.code === 'TIER1_REVIEW')).toBeUndefined();
     expect(result.escalations.find((e) => e.code === 'HEAVY_AMEX')).toBeUndefined();
     expect(result.escalations.find((e) => e.code === 'HIGH_INTERNATIONAL')).toBeUndefined();
     expect(result.escalations.find((e) => e.code === 'UNREALISTIC_DCC')).toBeUndefined();
     expect(result.escalations.find((e) => e.code === 'LARGE_DEAL')).toBeUndefined();
     expect(result.escalations.find((e) => e.code === 'NEGATIVE_SAVINGS')).toBeUndefined();
+    expect(result.escalations.find((e) => e.code === 'LOW_MARGIN')).toBeUndefined();
     expect(result.annualSavings).toBeGreaterThan(0);
   });
 });
@@ -427,8 +471,10 @@ describe('edge cases', () => {
     const result = calculatePricing(input);
 
     expect(result.tier).toBe(5);
-    expect(result.annualCostCurrent).toBe(1200); // just monthly fees
-    expect(result.annualCostProposed).toBe(420);  // 35 * 12 * 1
+    // Current: just monthly fees = 100*12 = 1200
+    expect(result.annualCostCurrent).toBe(1200);
+    // Proposed: just monthly fees = 35*12 = 420 (zero volume, rate irrelevant)
+    expect(result.annualCostProposed).toBe(420);
   });
 
   it('handles zero avg transaction size gracefully', () => {
@@ -437,8 +483,7 @@ describe('edge cases', () => {
 
     // txCount = 0, so no per-tx fees
     expect(result.tier).toBe(3);
-    // Cost is just volume-based + monthly
-    const expectedCurrent = 10_000_000 * 50 / 10_000 + 0 + 100 * 12;
+    const expectedCurrent = 10_000_000 * 120 / 10_000 + 0 + 100 * 12;
     expect(result.annualCostCurrent).toBe(expectedCurrent);
   });
 
@@ -448,6 +493,7 @@ describe('edge cases', () => {
         visa: 100,
         mastercard: 0,
         amex: 0,
+        mbway: 0,
         other: 0,
         international: 0,
         corporate: 0,
@@ -455,7 +501,10 @@ describe('edge cases', () => {
       },
     });
     const result = calculatePricing(input);
-    expect(result.adjustedRate).toBe(32); // no adjustments
+    // IC: 0% amex, 100% credit at 30bps = 30 + 8 scheme = 38 total cost
+    // Markup: 32 (no adjustments)
+    // Total: 38 + 32 = 70
+    expect(result.adjustedRate).toBe(70);
   });
 
   it('calculates DCC integrated into full pricing', () => {

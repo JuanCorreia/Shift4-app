@@ -1,36 +1,51 @@
 import type { CardMix, MarginEstimate } from './types';
 
-const INTERCHANGE_DEBIT = 20;   // 0.20% = 20bps (EU regulated)
-const INTERCHANGE_CREDIT = 30;  // 0.30% = 30bps (EU regulated)
-const INTERCHANGE_AMEX = 150;   // 1.50% = 150bps
-const SCHEME_FEES = 8;          // ~8bps flat
+export const INTERCHANGE_DEBIT = 20;   // 0.20% = 20bps (EU regulated)
+export const INTERCHANGE_CREDIT = 30;  // 0.30% = 30bps (EU regulated)
+export const INTERCHANGE_AMEX = 150;   // 1.50% = 150bps
+export const SCHEME_FEES = 8;          // ~8bps flat
+
+export function estimateInterchangeCost(cardMix: CardMix): { interchangeCost: number; schemeFees: number; totalCost: number } {
+  const debitShare = cardMix.debit / 100;
+  const amexShare = cardMix.amex / 100;
+  const nonAmexShare = 1 - amexShare;
+
+  // Debit share within non-Amex portion
+  const debitWithinNonAmex = nonAmexShare > 0 ? Math.min(debitShare / nonAmexShare, 1) : 0;
+
+  // Weighted interchange for Visa/MC portion
+  const visaMcInterchange =
+    debitWithinNonAmex * INTERCHANGE_DEBIT + (1 - debitWithinNonAmex) * INTERCHANGE_CREDIT;
+
+  // Overall weighted interchange
+  const interchangeCost = round(
+    amexShare * INTERCHANGE_AMEX + nonAmexShare * visaMcInterchange
+  );
+
+  return {
+    interchangeCost,
+    schemeFees: SCHEME_FEES,
+    totalCost: round(interchangeCost + SCHEME_FEES),
+  };
+}
 
 export function estimateMargin(
   adjustedRate: number,
   cardMix: CardMix
 ): MarginEstimate {
-  const debitShare = cardMix.debit / 100;
-  const amexShare = cardMix.amex / 100;
-  const nonAmexShare = 1 - amexShare;
+  const costs = estimateInterchangeCost(cardMix);
 
-  // Weighted interchange for Visa/MC portion (split by debit/credit within non-amex)
-  const visaMcInterchange =
-    debitShare * INTERCHANGE_DEBIT + (1 - debitShare) * INTERCHANGE_CREDIT;
-
-  // Overall weighted interchange: amex portion at amex rate, rest at visa/mc weighted rate
-  const interchangeCost = round(
-    amexShare * INTERCHANGE_AMEX + nonAmexShare * visaMcInterchange
-  );
-
-  const totalCost = round(interchangeCost + SCHEME_FEES);
-  const margin = round(adjustedRate - totalCost);
+  // adjustedRate is the Banyan markup ON TOP of interchange+scheme
+  // margin = adjustedRate (since costs are passed through)
+  const margin = round(adjustedRate);
+  const totalMerchantRate = round(costs.totalCost + adjustedRate);
   const marginPercent =
-    adjustedRate > 0 ? round((margin / adjustedRate) * 100) : 0;
+    totalMerchantRate > 0 ? round((margin / totalMerchantRate) * 100) : 0;
 
   return {
-    interchangeCost,
-    schemeFees: SCHEME_FEES,
-    totalCost,
+    interchangeCost: costs.interchangeCost,
+    schemeFees: costs.schemeFees,
+    totalCost: costs.totalCost,
     margin,
     marginPercent,
     healthy: margin > 5,

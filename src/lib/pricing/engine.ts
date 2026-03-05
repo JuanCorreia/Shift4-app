@@ -1,6 +1,6 @@
 import type { PricingInput, PricingResult } from './types';
 import { getTier, getTierDefinition } from './tiers';
-import { estimateMargin } from './margin';
+import { estimateMargin, estimateInterchangeCost } from './margin';
 import { calculateDccRevenue } from './dcc';
 import { generateEscalations } from './escalation';
 
@@ -8,8 +8,12 @@ export function calculatePricing(input: PricingInput): PricingResult {
   const tier = getTier(input.annualVolume);
   const tierDef = getTierDefinition(tier);
 
-  // Card mix adjustments
+  // Card mix adjustments — this is Banyan's markup above interchange+scheme
   const adjustedRate = calculateAdjustedRate(tierDef.baseRate, input);
+
+  // Calculate interchange + scheme to get total merchant-facing rate
+  const costs = estimateInterchangeCost(input.cardMix);
+  const totalMerchantRate = round(costs.totalCost + adjustedRate);
 
   // Transaction count
   const txCount =
@@ -23,9 +27,9 @@ export function calculatePricing(input: PricingInput): PricingResult {
     txCount * input.currentTxFee +
     input.currentMonthlyFee * 12 * input.propertyCount;
 
-  // Annual cost — proposed
+  // Annual cost — proposed (using total merchant rate = IC + scheme + markup)
   const annualCostProposed =
-    input.annualVolume * (adjustedRate / 10_000) +
+    input.annualVolume * (totalMerchantRate / 10_000) +
     txCount * tierDef.txFee +
     tierDef.monthlyFee * 12 * input.propertyCount;
 
@@ -46,7 +50,7 @@ export function calculatePricing(input: PricingInput): PricingResult {
     tier,
     tierName: tierDef.name,
     baseRate: tierDef.baseRate,
-    adjustedRate,
+    adjustedRate: totalMerchantRate, // merchant-facing rate
     proposedTxFee: tierDef.txFee,
     proposedMonthlyFee: tierDef.monthlyFee,
     annualCostCurrent: round(annualCostCurrent),
