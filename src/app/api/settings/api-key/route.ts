@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { teamSettings } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
@@ -10,7 +10,7 @@ export async function PATCH(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (session.role !== "admin") {
+    if (session.role !== "admin" && session.role !== "super_admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -29,6 +29,19 @@ export async function PATCH(request: NextRequest) {
         { error: "Team ID is required" },
         { status: 400 }
       );
+    }
+
+    // Scope to partner unless super_admin
+    if (!session.partnerId && session.role !== "super_admin") {
+      return NextResponse.json({ error: "No partner assigned" }, { status: 403 });
+    }
+    const conditions = session.role === "super_admin"
+      ? eq(teamSettings.id, teamId)
+      : and(eq(teamSettings.id, teamId), eq(teamSettings.partnerId, session.partnerId!));
+
+    const [existing] = await db.select().from(teamSettings).where(conditions);
+    if (!existing) {
+      return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
     await db

@@ -1,33 +1,26 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { db } from '@/lib/db';
 import { teamSettings } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
-let _anthropic: Anthropic | null = null;
-let _cachedKey: string | null = null;
-
-async function getApiKey(): Promise<string> {
-  // Try DB first
+async function getApiKey(partnerId?: string): Promise<string> {
+  // Try DB first, scoped to partner
   try {
-    const settings = await db.select().from(teamSettings).limit(1);
-    if (settings[0]?.anthropicApiKey) {
-      return settings[0].anthropicApiKey;
+    if (partnerId) {
+      const [settings] = await db
+        .select()
+        .from(teamSettings)
+        .where(eq(teamSettings.partnerId, partnerId))
+        .limit(1);
+      if (settings?.anthropicApiKey) {
+        return settings.anthropicApiKey;
+      }
     }
   } catch {
     // DB not available, fall through
   }
   // Fall back to env var
   return process.env.ANTHROPIC_API_KEY || '';
-}
-
-async function getAnthropic(): Promise<Anthropic> {
-  const key = await getApiKey();
-  // Recreate client if key changed
-  if (_anthropic && _cachedKey === key) {
-    return _anthropic;
-  }
-  _anthropic = new Anthropic({ apiKey: key });
-  _cachedKey = key;
-  return _anthropic;
 }
 
 const MAX_RETRIES = 3;
@@ -39,16 +32,20 @@ export async function createChatCompletion(
     model?: string;
     max_tokens?: number;
     system?: string;
+    partnerId?: string;
   } = {}
 ): Promise<Anthropic.Message> {
   const {
     model = 'claude-sonnet-4-20250514',
     max_tokens = 4096,
     system,
+    partnerId,
   } = options;
 
+  const key = await getApiKey(partnerId);
+  const client = new Anthropic({ apiKey: key });
+
   let lastError: Error | null = null;
-  const client = await getAnthropic();
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {

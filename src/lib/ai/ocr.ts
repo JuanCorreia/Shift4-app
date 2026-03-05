@@ -26,7 +26,7 @@ export interface StatementOcrResult {
   rawNotes: string;
 }
 
-export async function parseStatement(pdfBase64: string): Promise<StatementOcrResult> {
+export async function parseStatement(pdfBase64: string, partnerId?: string): Promise<StatementOcrResult> {
   const response = await createChatCompletion(
     [
       {
@@ -51,6 +51,7 @@ export async function parseStatement(pdfBase64: string): Promise<StatementOcrRes
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       system: OCR_SYSTEM_PROMPT,
+      partnerId,
     }
   );
 

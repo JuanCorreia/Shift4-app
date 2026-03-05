@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'hotelName is required' }, { status: 400 });
     }
 
-    const result = await researchHotel(hotelName);
+    const result = await researchHotel(hotelName, session.partnerId ?? undefined);
     return NextResponse.json(result);
   } catch (err) {
     console.error('Hotel research error:', err);

@@ -16,7 +16,7 @@ export interface HotelResearchResult {
   sources: string[];
 }
 
-export async function researchHotel(hotelName: string): Promise<HotelResearchResult> {
+export async function researchHotel(hotelName: string, partnerId?: string): Promise<HotelResearchResult> {
   const message = await createChatCompletion(
     [
       {
@@ -28,6 +28,7 @@ export async function researchHotel(hotelName: string): Promise<HotelResearchRes
       model: 'claude-sonnet-4-20250514',
       max_tokens: 2048,
       system: RESEARCH_SYSTEM_PROMPT,
+      partnerId,
     }
   );
 

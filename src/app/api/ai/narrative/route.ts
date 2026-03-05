@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const input = dealToNarrativeInput(deal);
-    const narrative = await generateNarrative(input);
+    const narrative = await generateNarrative(input, session.partnerId ?? undefined);
 
     await db
       .update(deals)

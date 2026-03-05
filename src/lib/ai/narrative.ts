@@ -55,7 +55,7 @@ function buildNarrativePrompt(data: NarrativeInput): string {
   if (data.dccEligible && pr.dccRevenue) {
     prompt += `\nDCC OPPORTUNITY:\n`;
     prompt += `Eligible International Volume: EUR ${pr.dccRevenue.eligibleVolume.toLocaleString('en-US', { maximumFractionDigits: 0 })}\n`;
-    prompt += `Projected Uptake: ${(pr.dccRevenue.projectedUptake * 100).toFixed(0)}%\n`;
+    prompt += `Projected Uptake Volume: EUR ${pr.dccRevenue.projectedUptake.toLocaleString('en-US', { maximumFractionDigits: 0 })}\n`;
     prompt += `Annual DCC Revenue: EUR ${pr.dccRevenue.annualRevenue.toLocaleString('en-US', { maximumFractionDigits: 0 })}\n`;
     prompt += `Merchant Revenue Share: EUR ${pr.dccRevenue.revenueShareMerchant.toLocaleString('en-US', { maximumFractionDigits: 0 })}\n`;
   }
@@ -81,7 +81,7 @@ export function dealToNarrativeInput(deal: Deal): NarrativeInput {
   };
 }
 
-export async function generateNarrative(data: NarrativeInput): Promise<string> {
+export async function generateNarrative(data: NarrativeInput, partnerId?: string): Promise<string> {
   const prompt = buildNarrativePrompt(data);
 
   const response = await createChatCompletion(
@@ -89,6 +89,7 @@ export async function generateNarrative(data: NarrativeInput): Promise<string> {
     {
       system: NARRATIVE_SYSTEM_PROMPT,
       max_tokens: 2048,
+      partnerId,
     }
   );
 

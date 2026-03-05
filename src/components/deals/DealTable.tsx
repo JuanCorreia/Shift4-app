@@ -12,10 +12,10 @@ const ITEMS_PER_PAGE = 10;
 // Volume tier labels
 function getTierLabel(volume: string): string {
   const v = Number(volume);
-  if (v >= 50_000_000) return "Tier 1";
-  if (v >= 10_000_000) return "Tier 2";
-  if (v >= 2_000_000) return "Tier 3";
-  if (v >= 500_000) return "Tier 4";
+  if (v >= 100_000_000) return "Tier 1";
+  if (v >= 25_000_000) return "Tier 2";
+  if (v >= 5_000_000) return "Tier 3";
+  if (v >= 1_000_000) return "Tier 4";
   return "Tier 5";
 }
 

@@ -266,7 +266,7 @@ export async function generateProposalDocx(deal: Deal): Promise<Buffer> {
       rows: [
         new TableRow({ children: [headerCell('DCC Metric', 50), headerCell('Value', 50)] }),
         new TableRow({ children: [dataCell('Eligible International Volume', true), dataCell(formatEur(pricing.dccRevenue.eligibleVolume))] }),
-        new TableRow({ children: [dataCell('Projected Uptake', true, true), dataCell(`${(pricing.dccRevenue.projectedUptake * 100).toFixed(0)}%`, false, true)] }),
+        new TableRow({ children: [dataCell('Projected Uptake Volume', true, true), dataCell(formatEur(pricing.dccRevenue.projectedUptake), false, true)] }),
         new TableRow({ children: [dataCell('Annual DCC Revenue', true), dataCell(formatEur(pricing.dccRevenue.annualRevenue))] }),
         new TableRow({ children: [dataCell('Merchant Share', true, true), dataCell(formatEur(pricing.dccRevenue.revenueShareMerchant), true, true)] }),
         new TableRow({ children: [dataCell('Shift4 Share', true), dataCell(formatEur(pricing.dccRevenue.revenueShareShift4))] }),

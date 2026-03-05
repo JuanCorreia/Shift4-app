@@ -305,6 +305,10 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
                     <p className="font-semibold">{formatEur(pricing.dccRevenue.eligibleVolume)}</p>
                   </div>
                   <div>
+                    <p className="text-gray-500">Projected Uptake Volume</p>
+                    <p className="font-semibold">{formatEur(pricing.dccRevenue.projectedUptake)}</p>
+                  </div>
+                  <div>
                     <p className="text-gray-500">Annual DCC Revenue</p>
                     <p className="font-semibold">{formatEur(pricing.dccRevenue.annualRevenue)}</p>
                   </div>

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { escalations } from '@/lib/db/schema';
+import { deals, escalations } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
+import { partnerFilter } from '@/lib/db/helpers';
 
 export async function GET(
   _request: NextRequest,
@@ -14,6 +15,14 @@ export async function GET(
   }
 
   const dealId = params.id;
+
+  // Verify deal belongs to user's partner
+  const pf = partnerFilter(session);
+  const dealConditions = pf ? and(eq(deals.id, dealId), pf) : eq(deals.id, dealId);
+  const [deal] = await db.select({ id: deals.id }).from(deals).where(dealConditions);
+  if (!deal) {
+    return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
+  }
 
   const rows = await db
     .select()
@@ -31,6 +40,14 @@ export async function PATCH(
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Verify deal belongs to user's partner
+  const pf = partnerFilter(session);
+  const dealConditions = pf ? and(eq(deals.id, params.id), pf) : eq(deals.id, params.id);
+  const [deal] = await db.select({ id: deals.id }).from(deals).where(dealConditions);
+  if (!deal) {
+    return NextResponse.json({ error: 'Deal not found' }, { status: 404 });
   }
 
   const body = await request.json();

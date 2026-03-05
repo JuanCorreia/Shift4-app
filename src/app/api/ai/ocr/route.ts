@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await parseStatement(pdfBase64);
+    const result = await parseStatement(pdfBase64, session.partnerId ?? undefined);
 
     return NextResponse.json(result);
   } catch (err) {
