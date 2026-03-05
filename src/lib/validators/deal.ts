@@ -7,16 +7,17 @@ export const cardMixSchema = z.object({
   visa: coercedNumeric.min(0).max(100),
   mastercard: coercedNumeric.min(0).max(100),
   amex: coercedNumeric.min(0).max(100),
+  mbway: coercedNumeric.min(0).max(100),
   other: coercedNumeric.min(0).max(100),
   international: coercedNumeric.min(0).max(100),
   corporate: coercedNumeric.min(0).max(100),
   debit: coercedNumeric.min(0).max(100),
 }).refine(
   (data) => {
-    const sum = data.visa + data.mastercard + data.amex + data.other;
+    const sum = data.visa + data.mastercard + data.amex + data.mbway + data.other;
     return Math.abs(sum - 100) < 0.01;
   },
-  { message: "Card mix (Visa + Mastercard + Amex + Other) must sum to 100%" }
+  { message: "Card mix (Visa + Mastercard + Amex + MBWay + Other) must sum to 100%" }
 );
 
 export const dealFormSchema = z.object({
@@ -40,6 +41,7 @@ export const dealFormSchema = z.object({
   cardMixVisa: coercedNumeric.min(0).max(100).default(40),
   cardMixMastercard: coercedNumeric.min(0).max(100).default(35),
   cardMixAmex: coercedNumeric.min(0).max(100).default(15),
+  cardMixMbway: coercedNumeric.min(0).max(100).default(0),
   cardMixOther: coercedNumeric.min(0).max(100).default(10),
   cardMixInternational: coercedNumeric.min(0).max(100).default(25),
   cardMixCorporate: coercedNumeric.min(0).max(100).default(15),
@@ -52,12 +54,13 @@ export const dealFormSchema = z.object({
 
   dccEligible: z.coerce.boolean().default(false),
   dccUptake: coercedNumeric.min(0).max(100).default(0),
-  dccMarkup: coercedNumeric.min(0).max(10).default(2.5),
+  dccMarkup: coercedNumeric.min(0).max(10).default(3.5),
+  merchantDccShare: coercedNumeric.min(0).max(5).default(1.0),
 
   mode: z.enum(["wizard", "statement"]).default("wizard"),
 }).refine(
   (data) => {
-    const sum = data.cardMixVisa + data.cardMixMastercard + data.cardMixAmex + data.cardMixOther;
+    const sum = data.cardMixVisa + data.cardMixMastercard + data.cardMixAmex + data.cardMixMbway + data.cardMixOther;
     return Math.abs(sum - 100) < 0.01;
   },
   { message: "Card mix (Visa + Mastercard + Amex + Other) must sum to 100%", path: ["cardMixVisa"] }

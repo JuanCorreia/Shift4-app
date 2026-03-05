@@ -11,6 +11,7 @@ function defaultCardMix(overrides: Partial<CardMix> = {}): CardMix {
     visa: 50,
     mastercard: 30,
     amex: 10,
+    mbway: 0,
     other: 10,
     international: 20,
     corporate: 10,
@@ -32,6 +33,7 @@ function defaultInput(overrides: Partial<PricingInput> = {}): PricingInput {
     dccEligible: false,
     dccUptake: 30,
     dccMarkup: 2.5,
+    merchantDccShare: 1.0,
     propertyCount: 1,
     starRating: 4,
     ...overrides,
@@ -239,9 +241,13 @@ describe('calculateDccRevenue', () => {
     // Revenue: 1.2M * 2.5% = 30000
     expect(result.annualRevenue).toBe(30_000);
 
-    // 50/50 split
-    expect(result.revenueShareMerchant).toBe(15_000);
-    expect(result.revenueShareShift4).toBe(15_000);
+    // 3-way split: merchant 1.0%, shift4 1.5%, host gets remainder
+    // Merchant: 1.2M * 1.0% = 12,000
+    expect(result.revenueShareMerchant).toBe(12_000);
+    // Shift4: 1.2M * 1.5% = 18,000
+    expect(result.revenueShareShift4).toBe(18_000);
+    // Host: 30,000 - 12,000 - 18,000 = 0
+    expect(result.revenueShareHost).toBe(0);
   });
 
   it('handles zero international volume', () => {

@@ -72,6 +72,7 @@ export const deals = pgTable('deals', {
   cardMixVisa: numeric('card_mix_visa', { precision: 5, scale: 2 }).default('40'),
   cardMixMastercard: numeric('card_mix_mastercard', { precision: 5, scale: 2 }).default('35'),
   cardMixAmex: numeric('card_mix_amex', { precision: 5, scale: 2 }).default('15'),
+  cardMixMbway: numeric('card_mix_mbway', { precision: 5, scale: 2 }).default('0'),
   cardMixOther: numeric('card_mix_other', { precision: 5, scale: 2 }).default('10'),
   cardMixInternational: numeric('card_mix_international', { precision: 5, scale: 2 }).default('25'),
   cardMixCorporate: numeric('card_mix_corporate', { precision: 5, scale: 2 }).default('15'),
@@ -86,7 +87,8 @@ export const deals = pgTable('deals', {
   // DCC
   dccEligible: boolean('dcc_eligible').default(false),
   dccUptake: numeric('dcc_uptake', { precision: 5, scale: 2 }).default('0'),
-  dccMarkup: numeric('dcc_markup', { precision: 5, scale: 2 }).default('2.5'),
+  dccMarkup: numeric('dcc_markup', { precision: 5, scale: 2 }).default('3.5'),
+  merchantDccShare: numeric('merchant_dcc_share', { precision: 5, scale: 2 }).default('1.0'),
 
   // Pricing results (stored as JSON)
   pricingResult: jsonb('pricing_result'),

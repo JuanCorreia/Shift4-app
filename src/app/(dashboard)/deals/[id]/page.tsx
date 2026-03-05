@@ -229,6 +229,10 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
                       <span className="font-medium">{formatPercent(deal.cardMixAmex)}</span>
                     </div>
                     <div>
+                      <span className="text-gray-500">MBWay:</span>{" "}
+                      <span className="font-medium">{formatPercent(deal.cardMixMbway)}</span>
+                    </div>
+                    <div>
                       <span className="text-gray-500">Other:</span>{" "}
                       <span className="font-medium">{formatPercent(deal.cardMixOther)}</span>
                     </div>

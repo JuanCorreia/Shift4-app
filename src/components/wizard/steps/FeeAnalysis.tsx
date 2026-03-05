@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { Receipt } from 'lucide-react';
+
+const PROCESSOR_OPTIONS = ['Unicre', 'Paybryd', 'Adyen', 'Stripe', 'Worldpay', 'Other'] as const;
 
 export interface FeeAnalysisData {
   currentProcessor: string;
@@ -15,6 +18,8 @@ interface FeeAnalysisProps {
 }
 
 export default function FeeAnalysis({ data, onChange }: FeeAnalysisProps) {
+  const isKnownProcessor = PROCESSOR_OPTIONS.slice(0, -1).includes(data.currentProcessor as typeof PROCESSOR_OPTIONS[number]);
+  const [showCustom, setShowCustom] = useState(!isKnownProcessor && data.currentProcessor !== '' && data.currentProcessor !== 'Other');
   const ratePercent = data.currentBlendedRate > 0 ? (data.currentBlendedRate / 100).toFixed(2) : '0.00';
 
   return (
@@ -35,14 +40,35 @@ export default function FeeAnalysis({ data, onChange }: FeeAnalysisProps) {
           <label htmlFor="currentProcessor" className="block text-sm font-medium text-gray-700 mb-1.5">
             Current Processor
           </label>
-          <input
+          <select
             id="currentProcessor"
-            type="text"
-            value={data.currentProcessor}
-            onChange={(e) => onChange({ currentProcessor: e.target.value })}
-            placeholder="e.g. Worldpay, Adyen, Stripe"
-            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-700 transition-all"
-          />
+            value={showCustom ? 'Other' : (isKnownProcessor ? data.currentProcessor : (data.currentProcessor === '' ? '' : 'Other'))}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === 'Other') {
+                setShowCustom(true);
+                onChange({ currentProcessor: '' });
+              } else {
+                setShowCustom(false);
+                onChange({ currentProcessor: val });
+              }
+            }}
+            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-700 transition-all"
+          >
+            <option value="">Select processor...</option>
+            {PROCESSOR_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          {showCustom && (
+            <input
+              type="text"
+              value={data.currentProcessor}
+              onChange={(e) => onChange({ currentProcessor: e.target.value })}
+              placeholder="Enter processor name"
+              className="w-full mt-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-700 transition-all"
+            />
+          )}
         </div>
 
         {/* Blended Rate */}

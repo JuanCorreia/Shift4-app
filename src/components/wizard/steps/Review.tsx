@@ -18,6 +18,7 @@ interface WizardData {
     visa: number;
     mastercard: number;
     amex: number;
+    mbway: number;
     other: number;
     international: number;
     corporate: number;
@@ -30,6 +31,7 @@ interface WizardData {
   dccEligible: boolean;
   dccUptake: number;
   dccMarkup: number;
+  merchantDccShare: number;
 }
 
 interface ReviewProps {
@@ -94,7 +96,7 @@ export default function Review({ data, onGoToStep, onSubmit }: ReviewProps) {
   const [result, setResult] = useState<PricingResult | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const brandTotal = data.cardMix.visa + data.cardMix.mastercard + data.cardMix.amex + data.cardMix.other;
+  const brandTotal = data.cardMix.visa + data.cardMix.mastercard + data.cardMix.amex + data.cardMix.mbway + data.cardMix.other;
 
   function handleCalculate() {
     const input: PricingInput = {
@@ -108,6 +110,7 @@ export default function Review({ data, onGoToStep, onSubmit }: ReviewProps) {
       dccEligible: data.dccEligible,
       dccUptake: data.dccUptake,
       dccMarkup: data.dccMarkup,
+      merchantDccShare: data.merchantDccShare,
       propertyCount: data.propertyCount,
       starRating: data.starRating,
     };
@@ -158,6 +161,7 @@ export default function Review({ data, onGoToStep, onSubmit }: ReviewProps) {
           <DataRow label="Visa" value={`${data.cardMix.visa}%`} />
           <DataRow label="Mastercard" value={`${data.cardMix.mastercard}%`} />
           <DataRow label="Amex" value={`${data.cardMix.amex}%`} />
+          <DataRow label="MBWay" value={`${data.cardMix.mbway}%`} />
           <DataRow label="Other" value={`${data.cardMix.other}%`} />
           <div className="border-t border-gray-100 mt-2 pt-2">
             <DataRow label="International" value={`${data.cardMix.international}%`} />
@@ -184,6 +188,7 @@ export default function Review({ data, onGoToStep, onSubmit }: ReviewProps) {
             <>
               <DataRow label="Uptake Rate" value={`${data.dccUptake}%`} />
               <DataRow label="Markup" value={`${data.dccMarkup}%`} />
+              <DataRow label="Merchant Share" value={`${data.merchantDccShare}%`} />
             </>
           )}
         </SummarySection>

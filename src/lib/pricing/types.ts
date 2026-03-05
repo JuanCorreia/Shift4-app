@@ -4,6 +4,7 @@ export interface CardMix {
   visa: number;
   mastercard: number;
   amex: number;
+  mbway: number;
   other: number;
   international: number;
   corporate: number;
@@ -21,6 +22,7 @@ export interface PricingInput {
   dccEligible: boolean;
   dccUptake: number;
   dccMarkup: number;
+  merchantDccShare: number;
   propertyCount: number;
   starRating: number;
 }
@@ -47,6 +49,7 @@ export interface DccResult {
   annualRevenue: number;
   revenueShareMerchant: number;
   revenueShareShift4: number;
+  revenueShareHost: number;
 }
 
 export interface MarginEstimate {

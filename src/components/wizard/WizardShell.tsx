@@ -34,6 +34,7 @@ interface WizardFormData {
     visa: number;
     mastercard: number;
     amex: number;
+    mbway: number;
     other: number;
     international: number;
     corporate: number;
@@ -46,6 +47,7 @@ interface WizardFormData {
   dccEligible: boolean;
   dccUptake: number;
   dccMarkup: number;
+  merchantDccShare: number;
 }
 
 const initialData: WizardFormData = {
@@ -56,14 +58,15 @@ const initialData: WizardFormData = {
   location: '',
   annualVolume: 0,
   avgTransactionSize: 0,
-  cardMix: { visa: 40, mastercard: 35, amex: 15, other: 10, international: 25, corporate: 15, debit: 30 },
+  cardMix: { visa: 40, mastercard: 35, amex: 15, mbway: 0, other: 10, international: 25, corporate: 15, debit: 30 },
   currentProcessor: '',
   currentBlendedRate: 0,
   currentTxFee: 0,
   currentMonthlyFee: 0,
   dccEligible: false,
   dccUptake: 35,
-  dccMarkup: 2.5,
+  dccMarkup: 3.5,
+  merchantDccShare: 1.0,
 };
 
 export default function WizardShell() {
@@ -109,6 +112,7 @@ export default function WizardShell() {
       cardMixVisa: formData.cardMix.visa,
       cardMixMastercard: formData.cardMix.mastercard,
       cardMixAmex: formData.cardMix.amex,
+      cardMixMbway: formData.cardMix.mbway,
       cardMixOther: formData.cardMix.other,
       cardMixInternational: formData.cardMix.international,
       cardMixCorporate: formData.cardMix.corporate,
@@ -120,6 +124,7 @@ export default function WizardShell() {
       dccEligible: formData.dccEligible,
       dccUptake: formData.dccUptake,
       dccMarkup: formData.dccMarkup,
+      merchantDccShare: formData.merchantDccShare,
       mode: 'wizard' as const,
     };
 
@@ -230,6 +235,7 @@ export default function WizardShell() {
               dccEligible: formData.dccEligible,
               dccUptake: formData.dccUptake,
               dccMarkup: formData.dccMarkup,
+              merchantDccShare: formData.merchantDccShare,
               annualVolume: formData.annualVolume,
               cardMixInternational: formData.cardMix.international,
             }}

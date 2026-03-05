@@ -196,15 +196,17 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
           </section>
 
           {/* Savings highlight */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
-            <p className="text-sm text-gray-500 mb-1">Projected Annual Savings</p>
-            <p className="text-3xl font-bold text-emerald-600">
-              {formatEur(pricing.annualSavings)}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              {pricing.savingsPercent.toFixed(1)}% reduction in processing costs
-            </p>
-          </div>
+          {pricing.annualSavings > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6">
+              <p className="text-sm text-gray-500 mb-1">Projected Annual Savings</p>
+              <p className="text-3xl font-bold text-emerald-600">
+                {formatEur(pricing.annualSavings)}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {pricing.savingsPercent.toFixed(1)}% reduction in processing costs
+              </p>
+            </div>
+          )}
 
           {/* Current vs Proposed */}
           <section>
@@ -303,16 +305,20 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
                     <p className="font-semibold">{formatEur(pricing.dccRevenue.eligibleVolume)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Projected Uptake</p>
-                    <p className="font-semibold">{(pricing.dccRevenue.projectedUptake * 100).toFixed(0)}%</p>
-                  </div>
-                  <div>
                     <p className="text-gray-500">Annual DCC Revenue</p>
                     <p className="font-semibold">{formatEur(pricing.dccRevenue.annualRevenue)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Merchant Revenue Share</p>
+                    <p className="text-gray-500">Merchant Share</p>
                     <p className="font-semibold text-emerald-600">{formatEur(pricing.dccRevenue.revenueShareMerchant)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Shift4 Share</p>
+                    <p className="font-semibold">{formatEur(pricing.dccRevenue.revenueShareShift4)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Host Share</p>
+                    <p className="font-semibold">{formatEur(pricing.dccRevenue.revenueShareHost)}</p>
                   </div>
                 </div>
               </div>

@@ -6,13 +6,14 @@ export interface DCCParamsData {
   dccEligible: boolean;
   dccUptake: number;
   dccMarkup: number;
+  merchantDccShare: number;
   annualVolume: number;
   cardMixInternational: number;
 }
 
 interface DCCParamsProps {
   data: DCCParamsData;
-  onChange: (data: Partial<Pick<DCCParamsData, 'dccEligible' | 'dccUptake' | 'dccMarkup'>>) => void;
+  onChange: (data: Partial<Pick<DCCParamsData, 'dccEligible' | 'dccUptake' | 'dccMarkup' | 'merchantDccShare'>>) => void;
 }
 
 function fmt(value: number): string {
@@ -28,7 +29,9 @@ export default function DCCParams({ data, onChange }: DCCParamsProps) {
   const eligibleVolume = data.annualVolume * (data.cardMixInternational / 100);
   const projectedUptake = eligibleVolume * (data.dccUptake / 100);
   const annualRevenue = projectedUptake * (data.dccMarkup / 100);
-  const merchantShare = annualRevenue * 0.5;
+  const merchantRevenue = projectedUptake * (data.merchantDccShare / 100);
+  const shift4Revenue = projectedUptake * (1.5 / 100);
+  const hostRevenue = annualRevenue - merchantRevenue - shift4Revenue;
 
   return (
     <div className="space-y-6">
@@ -132,7 +135,44 @@ export default function DCCParams({ data, onChange }: DCCParamsProps) {
               </div>
             </div>
             <p className="mt-1.5 text-xs text-gray-400">
-              Currency conversion markup applied to DCC transactions (standard: 2.5%)
+              Currency conversion markup applied to DCC transactions (standard: 3.5%)
+            </p>
+          </div>
+
+          {/* Merchant DCC Share */}
+          <div>
+            <label htmlFor="merchantDccShare" className="block text-sm font-medium text-gray-700 mb-1.5">
+              Merchant DCC Share
+            </label>
+            <div className="flex items-center gap-4">
+              <input
+                type="range"
+                min={0.5}
+                max={1.5}
+                step={0.1}
+                value={data.merchantDccShare}
+                onChange={(e) => onChange({ merchantDccShare: Number(e.target.value) })}
+                className="flex-1 h-2 rounded-full appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #7C3AED ${((data.merchantDccShare - 0.5) / 1.0) * 100}%, #E5E7EB ${((data.merchantDccShare - 0.5) / 1.0) * 100}%)`,
+                }}
+              />
+              <div className="w-20 flex items-center gap-1">
+                <input
+                  id="merchantDccShare"
+                  type="number"
+                  min={0.5}
+                  max={1.5}
+                  step={0.1}
+                  value={data.merchantDccShare}
+                  onChange={(e) => onChange({ merchantDccShare: Math.min(1.5, Math.max(0.5, Number(e.target.value))) })}
+                  className="w-14 px-2 py-1 text-sm text-right bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500"
+                />
+                <span className="text-sm text-gray-400">%</span>
+              </div>
+            </div>
+            <p className="mt-1.5 text-xs text-gray-400">
+              Merchant&apos;s share of DCC markup (0.5–1.5%). Shift4 fixed at 1.5%, Host gets remainder.
             </p>
           </div>
 
@@ -157,8 +197,16 @@ export default function DCCParams({ data, onChange }: DCCParamsProps) {
                   <div className="font-semibold text-purple-900">{fmt(annualRevenue)}</div>
                 </div>
                 <div>
-                  <div className="text-purple-600">Merchant Share (50%)</div>
-                  <div className="font-bold text-purple-900">{fmt(merchantShare)}</div>
+                  <div className="text-purple-600">Merchant ({data.merchantDccShare}%)</div>
+                  <div className="font-semibold text-purple-900">{fmt(merchantRevenue)}</div>
+                </div>
+                <div>
+                  <div className="text-purple-600">Shift4 (1.5%)</div>
+                  <div className="font-semibold text-purple-900">{fmt(shift4Revenue)}</div>
+                </div>
+                <div>
+                  <div className="text-purple-600">Host ({(data.dccMarkup - data.merchantDccShare - 1.5).toFixed(1)}%)</div>
+                  <div className="font-bold text-purple-900">{fmt(hostRevenue)}</div>
                 </div>
               </div>
             </div>

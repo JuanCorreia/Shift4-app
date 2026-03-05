@@ -81,6 +81,7 @@ export default function StatementPage() {
         visa: edited.cardMix.visa,
         mastercard: edited.cardMix.mastercard,
         amex: edited.cardMix.amex,
+        mbway: 0,
         other: edited.cardMix.other,
         international: edited.internationalPercent,
         corporate: 15, // default estimate
@@ -91,7 +92,8 @@ export default function StatementPage() {
       currentMonthlyFee: edited.monthlyFee,
       dccEligible: edited.internationalPercent >= 10,
       dccUptake: 35,
-      dccMarkup: 2.5,
+      dccMarkup: 3.5,
+      merchantDccShare: 1.0,
       propertyCount: 1,
       starRating: 4,
     };
@@ -114,6 +116,7 @@ export default function StatementPage() {
         cardMixVisa: confirmedData.cardMix.visa,
         cardMixMastercard: confirmedData.cardMix.mastercard,
         cardMixAmex: confirmedData.cardMix.amex,
+        cardMixMbway: 0,
         cardMixOther: confirmedData.cardMix.other,
         cardMixInternational: confirmedData.internationalPercent,
         cardMixCorporate: 15,
@@ -124,7 +127,8 @@ export default function StatementPage() {
         currentMonthlyFee: confirmedData.monthlyFee || undefined,
         dccEligible: confirmedData.internationalPercent >= 10,
         dccUptake: 35,
-        dccMarkup: 2.5,
+        dccMarkup: 3.5,
+        merchantDccShare: 1.0,
         mode: 'statement' as const,
       });
 

@@ -149,18 +149,20 @@ export async function generateProposalDocx(deal: Deal): Promise<Buffer> {
     );
   }
 
-  // Savings highlight
-  contentChildren.push(
-    new Paragraph({ spacing: { before: 200 } }),
-    new Paragraph({
-      children: [
-        new TextRun({ text: 'Projected Annual Savings: ', size: 24, color: '6b7280', font: 'Calibri' }),
-        new TextRun({ text: formatEur(pricing.annualSavings), bold: true, size: 36, color: '059669', font: 'Calibri' }),
-        new TextRun({ text: `  (${pricing.savingsPercent.toFixed(1)}% reduction)`, size: 20, color: '6b7280', font: 'Calibri' }),
-      ],
-      spacing: { after: 400 },
-    })
-  );
+  // Savings highlight (only when positive)
+  if (pricing.annualSavings > 0) {
+    contentChildren.push(
+      new Paragraph({ spacing: { before: 200 } }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: 'Projected Annual Savings: ', size: 24, color: '6b7280', font: 'Calibri' }),
+          new TextRun({ text: formatEur(pricing.annualSavings), bold: true, size: 36, color: '059669', font: 'Calibri' }),
+          new TextRun({ text: `  (${pricing.savingsPercent.toFixed(1)}% reduction)`, size: 20, color: '6b7280', font: 'Calibri' }),
+        ],
+        spacing: { after: 400 },
+      })
+    );
+  }
 
   // Current vs Proposed comparison table
   contentChildren.push(
@@ -266,8 +268,9 @@ export async function generateProposalDocx(deal: Deal): Promise<Buffer> {
         new TableRow({ children: [dataCell('Eligible International Volume', true), dataCell(formatEur(pricing.dccRevenue.eligibleVolume))] }),
         new TableRow({ children: [dataCell('Projected Uptake', true, true), dataCell(`${(pricing.dccRevenue.projectedUptake * 100).toFixed(0)}%`, false, true)] }),
         new TableRow({ children: [dataCell('Annual DCC Revenue', true), dataCell(formatEur(pricing.dccRevenue.annualRevenue))] }),
-        new TableRow({ children: [dataCell('Merchant Revenue Share', true, true), dataCell(formatEur(pricing.dccRevenue.revenueShareMerchant), true, true)] }),
-        new TableRow({ children: [dataCell('Banyan Revenue Share', true), dataCell(formatEur(pricing.dccRevenue.revenueShareShift4))] }),
+        new TableRow({ children: [dataCell('Merchant Share', true, true), dataCell(formatEur(pricing.dccRevenue.revenueShareMerchant), true, true)] }),
+        new TableRow({ children: [dataCell('Shift4 Share', true), dataCell(formatEur(pricing.dccRevenue.revenueShareShift4))] }),
+        new TableRow({ children: [dataCell('Host Share', true, true), dataCell(formatEur(pricing.dccRevenue.revenueShareHost), false, true)] }),
       ],
     });
     contentChildren.push(dccTable);

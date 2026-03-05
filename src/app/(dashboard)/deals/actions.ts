@@ -26,6 +26,7 @@ export async function createDeal(data: unknown) {
       visa: parsed.cardMixVisa,
       mastercard: parsed.cardMixMastercard,
       amex: parsed.cardMixAmex,
+      mbway: parsed.cardMixMbway,
       other: parsed.cardMixOther,
       international: parsed.cardMixInternational,
       corporate: parsed.cardMixCorporate,
@@ -37,6 +38,7 @@ export async function createDeal(data: unknown) {
     dccEligible: parsed.dccEligible,
     dccUptake: parsed.dccUptake,
     dccMarkup: parsed.dccMarkup,
+    merchantDccShare: parsed.merchantDccShare,
     propertyCount: parsed.propertyCount ?? 1,
     starRating: parsed.starRating ?? 4,
   };
@@ -56,6 +58,7 @@ export async function createDeal(data: unknown) {
       cardMixVisa: String(parsed.cardMixVisa),
       cardMixMastercard: String(parsed.cardMixMastercard),
       cardMixAmex: String(parsed.cardMixAmex),
+      cardMixMbway: String(parsed.cardMixMbway),
       cardMixOther: String(parsed.cardMixOther),
       cardMixInternational: String(parsed.cardMixInternational),
       cardMixCorporate: String(parsed.cardMixCorporate),
@@ -67,6 +70,7 @@ export async function createDeal(data: unknown) {
       dccEligible: parsed.dccEligible,
       dccUptake: String(parsed.dccUptake),
       dccMarkup: String(parsed.dccMarkup),
+      merchantDccShare: String(parsed.merchantDccShare),
       pricingResult,
       mode: parsed.mode,
       status: "draft",
@@ -115,6 +119,7 @@ export async function updateDeal(id: string, data: unknown) {
     cardMixVisa: { dbKey: "cardMixVisa", transform: String },
     cardMixMastercard: { dbKey: "cardMixMastercard", transform: String },
     cardMixAmex: { dbKey: "cardMixAmex", transform: String },
+    cardMixMbway: { dbKey: "cardMixMbway", transform: String },
     cardMixOther: { dbKey: "cardMixOther", transform: String },
     cardMixInternational: { dbKey: "cardMixInternational", transform: String },
     cardMixCorporate: { dbKey: "cardMixCorporate", transform: String },
@@ -126,6 +131,7 @@ export async function updateDeal(id: string, data: unknown) {
     dccEligible: { dbKey: "dccEligible" },
     dccUptake: { dbKey: "dccUptake", transform: String },
     dccMarkup: { dbKey: "dccMarkup", transform: String },
+    merchantDccShare: { dbKey: "merchantDccShare", transform: String },
     mode: { dbKey: "mode" },
   };
 
@@ -149,10 +155,10 @@ export async function updateDeal(id: string, data: unknown) {
     // Recalculate pricing if any pricing-relevant field changed
     const pricingFields = new Set([
       'annualVolume', 'avgTransactionSize',
-      'cardMixVisa', 'cardMixMastercard', 'cardMixAmex', 'cardMixOther',
+      'cardMixVisa', 'cardMixMastercard', 'cardMixAmex', 'cardMixMbway', 'cardMixOther',
       'cardMixInternational', 'cardMixCorporate', 'cardMixDebit',
       'currentBlendedRate', 'currentTxFee', 'currentMonthlyFee',
-      'dccEligible', 'dccUptake', 'dccMarkup', 'propertyCount', 'starRating',
+      'dccEligible', 'dccUptake', 'dccMarkup', 'merchantDccShare', 'propertyCount', 'starRating',
     ]);
     const hasPricingChange = historyEntries.some((e) => pricingFields.has(e.field));
 
@@ -167,6 +173,7 @@ export async function updateDeal(id: string, data: unknown) {
           visa: Number(merged.cardMixVisa),
           mastercard: Number(merged.cardMixMastercard),
           amex: Number(merged.cardMixAmex),
+          mbway: Number(merged.cardMixMbway ?? 0),
           other: Number(merged.cardMixOther),
           international: Number(merged.cardMixInternational),
           corporate: Number(merged.cardMixCorporate),
@@ -178,6 +185,7 @@ export async function updateDeal(id: string, data: unknown) {
         dccEligible: Boolean(merged.dccEligible),
         dccUptake: Number(merged.dccUptake),
         dccMarkup: Number(merged.dccMarkup),
+        merchantDccShare: Number(merged.merchantDccShare ?? 1.0),
         propertyCount: Number(merged.propertyCount ?? 1),
         starRating: Number(merged.starRating ?? 4),
       };

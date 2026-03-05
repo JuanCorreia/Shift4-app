@@ -223,12 +223,14 @@ function ProposalDocument({ deal, pricing }: ProposalDocProps) {
 
       createElement(View, { style: styles.spacer }),
 
-      // Savings highlight
-      createElement(View, { style: styles.highlightBox },
-        createElement(Text, { style: styles.highlightLabel }, 'Projected Annual Savings'),
-        createElement(Text, { style: styles.highlightValue }, formatEur(pricing.annualSavings)),
-        createElement(Text, { style: styles.highlightSub }, `${pricing.savingsPercent.toFixed(1)}% reduction in processing costs`),
-      ),
+      // Savings highlight (only when positive)
+      ...(pricing.annualSavings > 0 ? [
+        createElement(View, { key: 'savings-box', style: styles.highlightBox },
+          createElement(Text, { style: styles.highlightLabel }, 'Projected Annual Savings'),
+          createElement(Text, { style: styles.highlightValue }, formatEur(pricing.annualSavings)),
+          createElement(Text, { style: styles.highlightSub }, `${pricing.savingsPercent.toFixed(1)}% reduction in processing costs`),
+        ),
+      ] : []),
 
       createElement(View, { style: styles.spacer }),
 
@@ -346,9 +348,17 @@ function ProposalDocument({ deal, pricing }: ProposalDocProps) {
             createElement(Text, { style: { fontSize: 9, color: TEXT_MUTED } }, 'Annual DCC Revenue:'),
             createElement(Text, { style: { fontSize: 9, fontFamily: 'Helvetica-Bold' } }, formatEur(pricing.dccRevenue.annualRevenue)),
           ),
-          createElement(View, { style: { flexDirection: 'row', justifyContent: 'space-between' } },
-            createElement(Text, { style: { fontSize: 9, color: TEXT_MUTED } }, 'Merchant Revenue Share:'),
+          createElement(View, { style: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 } },
+            createElement(Text, { style: { fontSize: 9, color: TEXT_MUTED } }, 'Merchant Share:'),
             createElement(Text, { style: { fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#059669' } }, formatEur(pricing.dccRevenue.revenueShareMerchant)),
+          ),
+          createElement(View, { style: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 } },
+            createElement(Text, { style: { fontSize: 9, color: TEXT_MUTED } }, 'Shift4 Share:'),
+            createElement(Text, { style: { fontSize: 9, fontFamily: 'Helvetica-Bold' } }, formatEur(pricing.dccRevenue.revenueShareShift4)),
+          ),
+          createElement(View, { style: { flexDirection: 'row', justifyContent: 'space-between' } },
+            createElement(Text, { style: { fontSize: 9, color: TEXT_MUTED } }, 'Host Share:'),
+            createElement(Text, { style: { fontSize: 9, fontFamily: 'Helvetica-Bold' } }, formatEur(pricing.dccRevenue.revenueShareHost)),
           ),
         ),
       ] : []),

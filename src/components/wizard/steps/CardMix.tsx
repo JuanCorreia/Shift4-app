@@ -16,6 +16,7 @@ const BRAND_COLORS: Record<string, string> = {
   visa: '#1A1F71',
   mastercard: '#EB001B',
   amex: '#006FCF',
+  mbway: '#E4002B',
   other: '#6B7280',
 };
 
@@ -63,7 +64,7 @@ function SliderRow({ label, field, value, color, onChange }: SliderRowProps) {
 
 export default function CardMix({ data, onChange }: CardMixProps) {
   const mix = data.cardMix;
-  const brandTotal = mix.visa + mix.mastercard + mix.amex + mix.other;
+  const brandTotal = mix.visa + mix.mastercard + mix.amex + mix.mbway + mix.other;
   const totalValid = brandTotal === 100;
 
   function handleBrandChange(field: string, value: number) {
@@ -103,6 +104,7 @@ export default function CardMix({ data, onChange }: CardMixProps) {
           <SliderRow label="Visa" field="visa" value={mix.visa} color={BRAND_COLORS.visa} onChange={handleBrandChange} />
           <SliderRow label="Mastercard" field="mastercard" value={mix.mastercard} color={BRAND_COLORS.mastercard} onChange={handleBrandChange} />
           <SliderRow label="Amex" field="amex" value={mix.amex} color={BRAND_COLORS.amex} onChange={handleBrandChange} />
+          <SliderRow label="MBWay" field="mbway" value={mix.mbway} color={BRAND_COLORS.mbway} onChange={handleBrandChange} />
           <SliderRow label="Other" field="other" value={mix.other} color={BRAND_COLORS.other} onChange={handleBrandChange} />
         </div>
 
@@ -123,6 +125,9 @@ export default function CardMix({ data, onChange }: CardMixProps) {
           {mix.amex > 0 && (
             <div style={{ width: `${mix.amex}%`, backgroundColor: BRAND_COLORS.amex }} className="transition-all duration-200" />
           )}
+          {mix.mbway > 0 && (
+            <div style={{ width: `${mix.mbway}%`, backgroundColor: BRAND_COLORS.mbway }} className="transition-all duration-200" />
+          )}
           {mix.other > 0 && (
             <div style={{ width: `${mix.other}%`, backgroundColor: BRAND_COLORS.other }} className="transition-all duration-200" />
           )}
@@ -131,6 +136,7 @@ export default function CardMix({ data, onChange }: CardMixProps) {
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BRAND_COLORS.visa }} /> Visa {mix.visa}%</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BRAND_COLORS.mastercard }} /> Mastercard {mix.mastercard}%</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BRAND_COLORS.amex }} /> Amex {mix.amex}%</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BRAND_COLORS.mbway }} /> MBWay {mix.mbway}%</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BRAND_COLORS.other }} /> Other {mix.other}%</span>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingDown, TrendingUp, Euro, Activity } from 'lucide-react';
+import { TrendingDown, TrendingUp, Euro, Activity, AlertTriangle } from 'lucide-react';
 import type { PricingResult } from '@/lib/pricing';
 import TierIndicator from './TierIndicator';
 import EscalationPanel from './EscalationPanel';
@@ -28,9 +28,22 @@ function fmtPct(value: number): string {
 
 export default function PricingBreakdown({ result }: PricingBreakdownProps) {
   const savingsPositive = result.annualSavings >= 0;
+  const criticalEscalations = result.escalations.filter((e) => e.severity === 'critical');
 
   return (
     <div className="space-y-6">
+      {/* Critical escalation banner */}
+      {criticalEscalations.length > 0 && (
+        <div className="bg-red-50 border border-red-300 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            {criticalEscalations.map((e) => (
+              <p key={e.code} className="text-sm font-medium text-red-800">{e.message}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tier + Savings headline */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
         <TierIndicator tier={result.tier} tierName={result.tierName} size="lg" />
@@ -122,8 +135,12 @@ export default function PricingBreakdown({ result }: PricingBreakdownProps) {
               <div className="font-semibold text-purple-900">{fmt(result.dccRevenue.revenueShareMerchant)}</div>
             </div>
             <div>
-              <div className="text-purple-600">Banyan Share</div>
+              <div className="text-purple-600">Shift4 Share</div>
               <div className="font-semibold text-purple-900">{fmt(result.dccRevenue.revenueShareShift4)}</div>
+            </div>
+            <div>
+              <div className="text-purple-600">Host Share</div>
+              <div className="font-semibold text-purple-900">{fmt(result.dccRevenue.revenueShareHost)}</div>
             </div>
           </div>
           <div className="mt-4 pt-3 border-t border-purple-200 flex justify-between items-center">

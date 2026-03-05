@@ -6,8 +6,13 @@ export function calculateDccRevenue(input: PricingInput): DccResult | null {
   const eligibleVolume = input.annualVolume * (input.cardMix.international / 100);
   const projectedUptake = eligibleVolume * (input.dccUptake / 100);
   const annualRevenue = projectedUptake * (input.dccMarkup / 100);
-  const revenueShareMerchant = round(annualRevenue * 0.5);
-  const revenueShareShift4 = round(annualRevenue * 0.5);
+
+  const merchantShare = input.merchantDccShare ?? 1.0;
+  const shift4Rate = 1.5;
+
+  const revenueShareMerchant = round(projectedUptake * (merchantShare / 100));
+  const revenueShareShift4 = round(projectedUptake * (shift4Rate / 100));
+  const revenueShareHost = round(annualRevenue - revenueShareMerchant - revenueShareShift4);
 
   return {
     eligibleVolume: round(eligibleVolume),
@@ -15,6 +20,7 @@ export function calculateDccRevenue(input: PricingInput): DccResult | null {
     annualRevenue: round(annualRevenue),
     revenueShareMerchant,
     revenueShareShift4,
+    revenueShareHost,
   };
 }
 
