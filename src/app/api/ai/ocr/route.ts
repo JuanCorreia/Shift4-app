@@ -21,20 +21,9 @@ export async function POST(req: NextRequest) {
 
     if (body.pdfBase64) {
       pdfBase64 = body.pdfBase64;
-    } else if (body.statementUrl) {
-      // Fetch the PDF from URL and convert to base64
-      const pdfResponse = await fetch(body.statementUrl);
-      if (!pdfResponse.ok) {
-        return NextResponse.json(
-          { error: 'Failed to fetch statement PDF' },
-          { status: 400 }
-        );
-      }
-      const arrayBuffer = await pdfResponse.arrayBuffer();
-      pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
     } else {
       return NextResponse.json(
-        { error: 'Provide either pdfBase64 or statementUrl' },
+        { error: 'pdfBase64 is required' },
         { status: 400 }
       );
     }

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { users, teamSettings } from "@/lib/db/schema";
 import { createSession } from "@/lib/auth/session";
 import { loginSchema } from "@/lib/validators/auth";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +20,17 @@ export async function POST(request: NextRequest) {
 
     const { inviteCode, name, email } = parsed.data;
 
-    // Validate invite code against team_settings (plain-text match)
+    // Rate limit: 5 attempts per minute per IP
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const { success: rateLimitOk } = rateLimit(ip, 5, 60000);
+    if (!rateLimitOk) {
+      return NextResponse.json(
+        { error: "Too many login attempts. Try again in a minute." },
+        { status: 429 }
+      );
+    }
+
+    // Validate invite code against team_settings
     const team = await db
       .select()
       .from(teamSettings)
@@ -43,13 +54,8 @@ export async function POST(request: NextRequest) {
     let user;
 
     if (existingUser.length > 0) {
-      // Update existing user
-      const updated = await db
-        .update(users)
-        .set({ name, inviteCode, updatedAt: new Date() })
-        .where(eq(users.email, email))
-        .returning();
-      user = updated[0];
+      // Existing user — don't overwrite their name or role
+      user = existingUser[0];
     } else {
       // Create new user
       const created = await db

@@ -8,18 +8,18 @@ import type { User } from "@/lib/db/schema";
 interface SettingsClientProps {
   initialUsers: User[];
   initialInviteCode: string;
-  initialApiKey: string;
+  initialApiKeySet: boolean;
   teamId: string | null;
 }
 
 export default function SettingsClient({
   initialUsers,
   initialInviteCode,
-  initialApiKey,
+  initialApiKeySet,
   teamId,
 }: SettingsClientProps) {
   const [inviteCode, setInviteCode] = useState(initialInviteCode);
-  const [apiKey, setApiKey] = useState(initialApiKey);
+  const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [savingApiKey, setSavingApiKey] = useState(false);
   const [apiKeyMessage, setApiKeyMessage] = useState("");
@@ -156,7 +156,7 @@ export default function SettingsClient({
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors font-mono"
-              placeholder="sk-ant-..."
+              placeholder={initialApiKeySet ? "Key is set — enter new key to replace" : "sk-ant-..."}
             />
             <button
               type="button"

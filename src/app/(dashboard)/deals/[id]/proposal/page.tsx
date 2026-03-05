@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { db } from '@/lib/db';
 import { deals } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -6,12 +7,16 @@ import Link from 'next/link';
 import { ArrowLeft, Calculator } from 'lucide-react';
 import ProposalPreview from '@/components/proposal/ProposalPreview';
 import type { PricingResult } from '@/lib/pricing/types';
+import { getSession } from '@/lib/auth/session';
 
 interface ProposalPageProps {
   params: { id: string };
 }
 
 export default async function ProposalPage({ params }: ProposalPageProps) {
+  const session = await getSession();
+  if (!session) redirect('/login');
+
   const { id } = params;
 
   const [deal] = await db.select().from(deals).where(eq(deals.id, id));
