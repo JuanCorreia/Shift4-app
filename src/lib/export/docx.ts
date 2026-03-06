@@ -252,18 +252,19 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
   };
 
   // ============================================================
-  // CHAPTER: Executive Summary
+  // ALL CONTENT (single flowing section — no page breaks between chapters)
   // ============================================================
-  const execChildren: (Paragraph | Table)[] = [
-    chapterHeading('Executive Summary'),
-  ];
+  const content: (Paragraph | Table)[] = [];
+
+  // --- Executive Summary ---
+  content.push(chapterHeading('Executive Summary'));
 
   if (narrativeParagraphs.length > 0) {
     for (const p of narrativeParagraphs) {
-      execChildren.push(bodyText(p));
+      content.push(bodyText(p));
     }
   } else {
-    execChildren.push(
+    content.push(
       new Paragraph({
         children: [new TextRun({ text: 'Narrative not yet generated.', size: 20, color: '9ca3af', font: 'Calibri', italics: true })],
         spacing: { after: 200 },
@@ -272,7 +273,7 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
   }
 
   if (pricing.annualSavings > 0) {
-    execChildren.push(
+    content.push(
       new Paragraph({ spacing: { before: 200 } }),
       new Paragraph({
         children: [
@@ -285,17 +286,9 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
     );
   }
 
-  const execSection = {
-    properties: contentPageProps,
-    headers: { default: shift4Header() },
-    footers: { default: footer },
-    children: execChildren,
-  };
-
-  // ============================================================
-  // CHAPTER: Proposed Commercial Model (IC++)
-  // ============================================================
-  const commercialChildren: (Paragraph | Table)[] = [
+  // --- Proposed Commercial Model (IC++) ---
+  content.push(
+    new Paragraph({ spacing: { before: 400 } }),
     chapterHeading('Proposed Commercial Model (IC++)'),
     bodyText(`Shift4 proposes a transparent IC++ acquiring model, aligned with international hospitality benchmarks. It is a platform-level solution designed for ${merchantName}.`),
     subHeading('Acquiring Fees'),
@@ -309,27 +302,19 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
     bulletItem(`€${pricing.proposedTxFee} per transaction`),
     subHeading('Monthly Fee'),
     bulletItem(`€${pricing.proposedMonthlyFee} per month`),
-  ];
+  );
 
   if (pricing.dccRevenue) {
-    commercialChildren.push(
+    content.push(
       subHeading('DCC Fees'),
       bulletItem('Amount charged to cardholder: 3%'),
       bulletItem(`1% goes to ${merchantName}`),
     );
   }
 
-  const commercialSection = {
-    properties: contentPageProps,
-    headers: { default: shift4Header() },
-    footers: { default: footer },
-    children: commercialChildren,
-  };
-
-  // ============================================================
-  // CHAPTER: Tokenization
-  // ============================================================
-  const tokenChildren: Paragraph[] = [
+  // --- Tokenization ---
+  content.push(
+    new Paragraph({ spacing: { before: 400 } }),
     chapterHeading('Tokenization: Security, Flexibility, and Guest Experience'),
     subHeading('What changes with tokenization'),
     bulletItem('Sensitive card data is replaced with secure tokens'),
@@ -362,19 +347,11 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
     bulletItem('Smoother guest experience (no repeated card requests)'),
     new Paragraph({ spacing: { before: 200 } }),
     bodyText('Tokenization is particularly valuable in hospitality, where payments are often multi-stage and delayed.'),
-  ];
+  );
 
-  const tokenSection = {
-    properties: contentPageProps,
-    headers: { default: shift4Header() },
-    footers: { default: footer },
-    children: tokenChildren,
-  };
-
-  // ============================================================
-  // CHAPTER: Recovering Uncollected Non-Refundable Revenue
-  // ============================================================
-  const recoveryChildren: Paragraph[] = [
+  // --- Recovering Uncollected Non-Refundable Revenue ---
+  content.push(
+    new Paragraph({ spacing: { before: 400 } }),
     chapterHeading('Recovering Uncollected Non-Refundable Revenue'),
     bodyText('In hospitality, a recurring and often underestimated source of revenue leakage comes from uncollected non-refundable reservations.'),
     bodyText('Even where rates are contractually non-refundable:'),
@@ -398,21 +375,12 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
     bulletItem(`On ${merchantName}'s scale, this can represent tens to low hundreds of thousands of euros annually, depending on booking mix and policies`),
     new Paragraph({ spacing: { before: 100 } }),
     bodyText('This is not new pricing or enforcement — it is the consistent collection of revenue already agreed by the guest.'),
-  ];
+  );
 
-  const recoverySection = {
-    properties: contentPageProps,
-    headers: { default: shift4Header() },
-    footers: { default: footer },
-    children: recoveryChildren,
-  };
-
-  // ============================================================
-  // CHAPTER: DCC Revenue Projection (conditional)
-  // ============================================================
-  let dccSection = null;
+  // --- DCC Revenue Projection (conditional) ---
   if (pricing.dccRevenue) {
-    const dccChildren: (Paragraph | Table)[] = [
+    content.push(
+      new Paragraph({ spacing: { before: 400 } }),
       chapterHeading('Dynamic Currency Conversion (DCC): Revenue Upside'),
       subHeading(`Why DCC is relevant for ${merchantName}`),
       bulletItem('High volume of international and Non-EEA cards'),
@@ -420,7 +388,7 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
       bulletItem('Transaction values where DCC is meaningful'),
       new Paragraph({ spacing: { before: 100 } }),
       bodyText('Conservative illustrative assumptions:'),
-    ];
+    );
 
     const dccTable = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -435,42 +403,26 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
         new TableRow({ children: [tDataCell('Host Share', true, true), tDataCell(formatEur(pricing.dccRevenue.revenueShareHost), false, true)] }),
       ],
     });
-    dccChildren.push(dccTable);
-
-    dccSection = {
-      properties: contentPageProps,
-      headers: { default: shift4Header() },
-      footers: { default: footer },
-      children: dccChildren,
-    };
+    content.push(dccTable);
   }
 
-  // ============================================================
-  // CHAPTER: Market Context (conditional — AI-generated)
-  // ============================================================
-  let marketSection = null;
+  // --- Market Context (conditional — AI-generated) ---
   if (marketContextParagraphs.length > 0) {
-    const marketChildren: Paragraph[] = [
+    content.push(
+      new Paragraph({ spacing: { before: 400 } }),
       chapterHeading('Market Context'),
-    ];
+    );
     for (const p of marketContextParagraphs) {
-      marketChildren.push(bodyText(p));
+      content.push(bodyText(p));
     }
-    marketSection = {
-      properties: contentPageProps,
-      headers: { default: shift4Header() },
-      footers: { default: footer },
-      children: marketChildren,
-    };
   }
 
-  // ============================================================
-  // CHAPTER: Current vs Proposed Comparison
-  // ============================================================
-  const compChildren: (Paragraph | Table)[] = [
+  // --- Current vs Proposed Comparison ---
+  content.push(
+    new Paragraph({ spacing: { before: 400 } }),
     chapterHeading('Current vs Proposed Comparison'),
     bodyText(`Summary of the pricing impact for ${merchantName} based on the data provided.`),
-  ];
+  );
 
   const compTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -518,19 +470,11 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
       }),
     ],
   });
-  compChildren.push(compTable);
+  content.push(compTable);
 
-  const compSection = {
-    properties: contentPageProps,
-    headers: { default: shift4Header() },
-    footers: { default: footer },
-    children: compChildren,
-  };
-
-  // ============================================================
-  // CHAPTER: Total Economics
-  // ============================================================
-  const totalChildren: Paragraph[] = [
+  // --- Total Economics ---
+  content.push(
+    new Paragraph({ spacing: { before: 400 } }),
     chapterHeading('Total Economics: Beyond Headline Pricing'),
     bodyText('This proposal should be evaluated on total outcome. The combined impact of:'),
     bulletItem('Embedded visibility into the reservation lifecycle'),
@@ -540,19 +484,11 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
     bulletItem('Reduced reconciliation effort and risk'),
     new Paragraph({ spacing: { before: 100 } }),
     bodyText('Creating a stronger long-term financial and operational position.'),
-  ];
+  );
 
-  const totalSection = {
-    properties: contentPageProps,
-    headers: { default: shift4Header() },
-    footers: { default: footer },
-    children: totalChildren,
-  };
-
-  // ============================================================
-  // CHAPTER: Implementation & Risk Mitigation
-  // ============================================================
-  const implChildren: Paragraph[] = [
+  // --- Implementation & Risk Mitigation ---
+  content.push(
+    new Paragraph({ spacing: { before: 400 } }),
     chapterHeading('Implementation & Risk Mitigation'),
     bodyText('To ensure a controlled rollout:'),
     bulletItem('Phased deployment (pilot properties first)'),
@@ -560,19 +496,11 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
     bulletItem('Price protection period'),
     new Paragraph({ spacing: { before: 100 } }),
     bodyText(`${merchantName} retains full control throughout the transition.`),
-  ];
+  );
 
-  const implSection = {
-    properties: contentPageProps,
-    headers: { default: shift4Header() },
-    footers: { default: footer },
-    children: implChildren,
-  };
-
-  // ============================================================
-  // CHAPTER: Why This Makes Sense + Closing
-  // ============================================================
-  const closingChildren: Paragraph[] = [
+  // --- Why This Makes Sense + Closing ---
+  content.push(
+    new Paragraph({ spacing: { before: 400 } }),
     chapterHeading(`Why This Makes Sense for ${merchantName}`),
     bodyText('This is not about changing a payment provider in isolation. It is about:'),
     bulletItem('Aligning payments with the PMS that runs the business'),
@@ -582,21 +510,13 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
     new Paragraph({ spacing: { before: 400 } }),
     subHeading('Closing Statement'),
     bodyText(`For a hotel group with ${merchantName}'s scale and international profile, payments deliver the most value when they are embedded, secure, and revenue-generating — not fragmented or treated as a standalone function.`),
-  ];
+  );
 
-  const closingSection = {
-    properties: contentPageProps,
-    headers: { default: shift4Header() },
-    footers: { default: footer },
-    children: closingChildren,
-  };
-
-  // ============================================================
-  // CHAPTER: Terms & Conditions
-  // ============================================================
-  const termsChildren: Paragraph[] = [
+  // --- Terms & Conditions ---
+  content.push(
+    new Paragraph({ spacing: { before: 400 } }),
     chapterHeading('Terms & Conditions'),
-  ];
+  );
 
   const terms = [
     'This proposal is valid for 30 days from the date of issue.',
@@ -608,7 +528,7 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
   ];
 
   for (let i = 0; i < terms.length; i++) {
-    termsChildren.push(
+    content.push(
       new Paragraph({
         children: [new TextRun({ text: `${i + 1}. ${terms[i]}`, size: 16, color: '6b7280', font: 'Calibri' })],
         spacing: { after: 60 },
@@ -616,11 +536,11 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
     );
   }
 
-  const termsSection = {
+  const contentSection = {
     properties: contentPageProps,
     headers: { default: shift4Header() },
     footers: { default: footer },
-    children: termsChildren,
+    children: content,
   };
 
   // ============================================================
@@ -629,17 +549,7 @@ export async function generateProposalDocx(deal: Deal, templateSlug?: string): P
   const sections = [
     coverSection,
     tocSection,
-    execSection,
-    commercialSection,
-    tokenSection,
-    recoverySection,
-    ...(dccSection ? [dccSection] : []),
-    ...(marketSection ? [marketSection] : []),
-    compSection,
-    totalSection,
-    implSection,
-    closingSection,
-    termsSection,
+    contentSection,
   ];
 
   const doc = new Document({
