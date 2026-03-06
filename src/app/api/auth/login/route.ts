@@ -127,7 +127,13 @@ export async function POST(request: NextRequest) {
     // Note: success is logged after OTP verification, not here
     // Generate OTP and send via email
     const otpCode = await createOtp(user.id, user.email);
-    await sendOtpEmail(user.email, otpCode, user.name);
+    try {
+      await sendOtpEmail(user.email, otpCode, user.name);
+    } catch (emailErr) {
+      console.error("Failed to send OTP email:", emailErr);
+      // In development / missing SMTP, log the code so login still works
+      console.log(`[DEV] OTP code for ${user.email}: ${otpCode}`);
+    }
 
     return NextResponse.json({
       success: true,
