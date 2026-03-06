@@ -31,6 +31,7 @@ export const users = pgTable("users", {
   role: roleEnum("role").notNull().default("analyst"),
   partnerId: uuid("partner_id").references(() => partners.id),
   inviteCode: varchar("invite_code", { length: 255 }),
+  active: boolean("active").default(true).notNull(),
   emailNotifications: boolean("email_notifications").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

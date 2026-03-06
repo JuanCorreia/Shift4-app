@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, Download, FileText } from 'lucide-react';
 import { useState, useCallback } from 'react';
 
 const STATUS_TABS = [
@@ -31,6 +31,7 @@ export default function DealFilters() {
   const currentTo = searchParams.get('to') || '';
 
   const [searchValue, setSearchValue] = useState(currentSearch);
+  const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null);
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -54,6 +55,39 @@ export default function DealFilters() {
     updateParams({ search: searchValue });
   }
 
+  function getExportParams(): string {
+    const params = new URLSearchParams();
+    if (currentStatus && currentStatus !== 'all') params.set('status', currentStatus);
+    if (currentSearch) params.set('search', currentSearch);
+    if (currentFrom) params.set('from', currentFrom);
+    if (currentTo) params.set('to', currentTo);
+    return params.toString();
+  }
+
+  async function handleExport(type: 'csv' | 'pdf') {
+    setExporting(type);
+    try {
+      const qs = getExportParams();
+      const url = `/api/export/deals-${type}${qs ? `?${qs}` : ''}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Export failed' }));
+        alert(data.error || 'Export failed');
+        return;
+      }
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `deals-export-${new Date().toISOString().split('T')[0]}.${type}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      alert('Export failed. Please try again.');
+    } finally {
+      setExporting(null);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Status tabs */}
@@ -73,7 +107,7 @@ export default function DealFilters() {
         ))}
       </div>
 
-      {/* Search, date range, sort row */}
+      {/* Search, date range, sort, export row */}
       <div className="flex flex-wrap items-end gap-3">
         {/* Search */}
         <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-[200px] max-w-sm">
@@ -134,6 +168,26 @@ export default function DealFilters() {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Export buttons */}
+        <div className="flex gap-2 ml-auto">
+          <button
+            onClick={() => handleExport('csv')}
+            disabled={exporting !== null}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {exporting === 'csv' ? 'Exporting...' : 'CSV'}
+          </button>
+          <button
+            onClick={() => handleExport('pdf')}
+            disabled={exporting !== null}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 transition-colors"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            {exporting === 'pdf' ? 'Exporting...' : 'PDF'}
+          </button>
         </div>
       </div>
     </div>

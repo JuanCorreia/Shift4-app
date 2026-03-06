@@ -65,7 +65,7 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     .select({
       totalSavings: sql<string>`coalesce(sum((pricing_result->>'annualSavings')::numeric), 0)`,
       totalDccRevenue: sql<string>`coalesce(sum((pricing_result->'dccRevenue'->>'annualRevenue')::numeric), 0)`,
-      avgMargin: sql<string>`coalesce(avg((pricing_result->'marginEstimate'->>'marginPercent')::numeric), 0)`,
+      avgMargin: sql<string>`coalesce(avg((pricing_result->'marginEstimate'->>'margin')::numeric), 0)`,
       pipelineValue: sql<string>`coalesce(sum(annual_volume), 0)`,
     })
     .from(deals)

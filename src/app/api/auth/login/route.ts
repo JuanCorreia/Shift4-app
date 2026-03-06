@@ -99,6 +99,16 @@ export async function POST(request: NextRequest) {
 
     if (existingUser.length > 0) {
       user = existingUser[0];
+
+      // Block deactivated users
+      if (!user.active) {
+        await db.insert(loginAttempts).values({ email, ip, userAgent, success: false });
+        return NextResponse.json(
+          { error: "Account deactivated. Contact your administrator." },
+          { status: 403 }
+        );
+      }
+
       if (!user.partnerId) {
         await db
           .update(users)
