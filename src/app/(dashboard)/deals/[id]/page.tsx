@@ -4,7 +4,8 @@ import { eq, and, sql } from "drizzle-orm";
 import { partnerFilter } from "@/lib/db/helpers";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, MapPin, Star, CreditCard, TrendingUp, History, AlertTriangle, FileText, ExternalLink } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Star, CreditCard, TrendingUp, History, AlertTriangle, FileText, ExternalLink, GitCompare } from "lucide-react";
+import PriceHistoryTab from "@/components/deals/PriceHistoryTab";
 import { StatusBadge } from "@/components/deals/StatusBadge";
 import { getSession } from "@/lib/auth/session";
 import StatusWorkflow from "@/components/deals/StatusWorkflow";
@@ -31,7 +32,7 @@ function formatPercent(value: string | null) {
   return `${Number(value).toFixed(2)}%`;
 }
 
-type TabKey = 'overview' | 'history' | 'escalations' | 'proposal';
+type TabKey = 'overview' | 'history' | 'price-history' | 'escalations' | 'proposal';
 
 export default async function DealDetailPage({ params, searchParams }: DealDetailPageProps) {
   const session = await getSession();
@@ -58,6 +59,7 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
   const tabs: { key: TabKey; label: string; icon: React.ElementType; badge?: number }[] = [
     { key: 'overview', label: 'Overview', icon: FileText },
     { key: 'history', label: 'History', icon: History },
+    { key: 'price-history', label: 'Price History', icon: GitCompare },
     { key: 'escalations', label: 'Escalations', icon: AlertTriangle, badge: unresolvedCount },
     { key: 'proposal', label: 'Proposal', icon: ExternalLink },
   ];
@@ -299,6 +301,12 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
       {activeTab === 'history' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <DealHistory dealId={id} />
+        </div>
+      )}
+
+      {activeTab === 'price-history' && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <PriceHistoryTab dealId={id} />
         </div>
       )}
 

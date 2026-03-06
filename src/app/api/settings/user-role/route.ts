@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
+import { logAuditEvent } from "@/lib/audit";
 
 const VALID_ROLES = ["analyst", "admin", "viewer"] as const;
 
@@ -49,6 +50,15 @@ export async function PATCH(request: NextRequest) {
       .update(users)
       .set({ role: role as (typeof VALID_ROLES)[number], updatedAt: new Date() })
       .where(eq(users.id, userId));
+
+    await logAuditEvent({
+      userId: session.userId,
+      action: "user_role_changed",
+      resource: "users",
+      resourceId: userId,
+      details: { newRole: role },
+      ip: request.headers.get("x-forwarded-for") || undefined,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

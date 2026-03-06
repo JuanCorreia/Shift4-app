@@ -3,6 +3,8 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { teamSettings } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
+import { encrypt } from "@/lib/crypto";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -44,10 +46,24 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
+    // Encrypt API key before storing if ENCRYPTION_KEY is set
+    let storedKey: string | null = null;
+    if (apiKey) {
+      storedKey = process.env.ENCRYPTION_KEY ? encrypt(apiKey) : apiKey;
+    }
+
     await db
       .update(teamSettings)
-      .set({ anthropicApiKey: apiKey || null, updatedAt: new Date() })
+      .set({ anthropicApiKey: storedKey, updatedAt: new Date() })
       .where(eq(teamSettings.id, teamId));
+
+    await logAuditEvent({
+      userId: session.userId,
+      action: apiKey ? "api_key_updated" : "api_key_removed",
+      resource: "team_settings",
+      resourceId: teamId,
+      ip: request.headers.get("x-forwarded-for") || undefined,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

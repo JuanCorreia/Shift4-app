@@ -3,6 +3,8 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { teamSettings } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
+import bcrypt from "bcryptjs";
+import { logAuditEvent } from "@/lib/audit";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -37,10 +39,21 @@ export async function PATCH(request: NextRequest) {
         ? eq(teamSettings.id, teamId)
         : and(eq(teamSettings.id, teamId), eq(teamSettings.partnerId, session.partnerId));
 
+    // Hash invite code before storing
+    const hashedCode = await bcrypt.hash(inviteCode, 10);
+
     await db
       .update(teamSettings)
-      .set({ inviteCode, updatedAt: new Date() })
+      .set({ inviteCode: hashedCode, updatedAt: new Date() })
       .where(updateCondition);
+
+    await logAuditEvent({
+      userId: session.userId,
+      action: "invite_code_updated",
+      resource: "team_settings",
+      resourceId: teamId,
+      ip: request.headers.get("x-forwarded-for") || undefined,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

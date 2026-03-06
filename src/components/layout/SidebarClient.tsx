@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, PlusCircle, Settings, Building2, Zap, X } from "lucide-react";
+import { LayoutDashboard, PlusCircle, Settings, Building2, BarChart3, Zap, X } from "lucide-react";
 
 const iconMap = {
   LayoutDashboard,
   PlusCircle,
   Settings,
   Building2,
+  BarChart3,
 } as const;
 
 interface NavItem {

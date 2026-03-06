@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, and, gt, sql } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { users, teamSettings, partners } from "@/lib/db/schema";
+import { users, teamSettings, loginAttempts } from "@/lib/db/schema";
 import { loginSchema } from "@/lib/validators/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { createSession } from "@/lib/auth/session";
+import { createOtp } from "@/lib/auth/otp";
+import { sendOtpEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,8 +22,10 @@ export async function POST(request: NextRequest) {
 
     const { inviteCode, name, email } = parsed.data;
 
-    // Rate limit: 5 attempts per minute per IP
     const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const userAgent = request.headers.get("user-agent") || undefined;
+
+    // Rate limit: 5 attempts per minute per IP
     const { success: rateLimitOk } = rateLimit(ip, 5, 60000);
     if (!rateLimitOk) {
       return NextResponse.json(
@@ -30,22 +34,59 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate invite code against team_settings
-    const team = await db
-      .select()
-      .from(teamSettings)
-      .where(eq(teamSettings.inviteCode, inviteCode))
-      .limit(1);
+    // Check lockout: 10 failed attempts in last 30 minutes
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const [failedCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(loginAttempts)
+      .where(
+        and(
+          eq(loginAttempts.email, email),
+          eq(loginAttempts.success, false),
+          gt(loginAttempts.createdAt, thirtyMinAgo)
+        )
+      );
 
-    if (team.length === 0) {
+    if (failedCount && failedCount.count >= 10) {
+      return NextResponse.json(
+        { error: "Account temporarily locked due to too many failed attempts. Try again in 30 minutes." },
+        { status: 429 }
+      );
+    }
+
+    // Validate invite code — fetch all team settings and compare with bcrypt
+    const allTeams = await db.select().from(teamSettings);
+
+    let matchedTeam = null;
+    for (const team of allTeams) {
+      // Support both hashed and plaintext codes (backwards compat)
+      const isHashed = team.inviteCode.startsWith("$2");
+      const isMatch = isHashed
+        ? await bcrypt.compare(inviteCode, team.inviteCode)
+        : inviteCode === team.inviteCode;
+
+      if (isMatch) {
+        matchedTeam = team;
+        break;
+      }
+    }
+
+    if (!matchedTeam) {
+      // Log failed attempt
+      await db.insert(loginAttempts).values({
+        email,
+        ip,
+        userAgent,
+        success: false,
+      });
+
       return NextResponse.json(
         { error: "Invalid invite code" },
         { status: 401 }
       );
     }
 
-    // Resolve partner from team_settings
-    const partnerId = team[0].partnerId;
+    const partnerId = matchedTeam.partnerId;
 
     // Find existing user or create new one
     const existingUser = await db
@@ -58,7 +99,6 @@ export async function POST(request: NextRequest) {
 
     if (existingUser.length > 0) {
       user = existingUser[0];
-      // Update partner_id if not set (backfill existing users)
       if (!user.partnerId) {
         await db
           .update(users)
@@ -69,35 +109,27 @@ export async function POST(request: NextRequest) {
     } else {
       const created = await db
         .insert(users)
-        .values({ name, email, inviteCode, partnerId, role: "analyst" })
+        .values({ name, email, inviteCode: "used", partnerId, role: "analyst" })
         .returning();
       user = created[0];
     }
 
-    // Resolve partner name
-    let partnerName: string | undefined;
-    if (user.partnerId) {
-      const [partner] = await db
-        .select({ name: partners.name })
-        .from(partners)
-        .where(eq(partners.id, user.partnerId))
-        .limit(1);
-      partnerName = partner?.name;
-    }
-
-    // Create session directly (MFA disabled)
-    await createSession({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      partnerId: user.partnerId,
-      partnerName,
+    // Log successful login attempt
+    await db.insert(loginAttempts).values({
+      email,
+      ip,
+      userAgent,
+      success: true,
     });
+
+    // Generate OTP and send via email
+    const otpCode = await createOtp(user.id, user.email);
+    await sendOtpEmail(user.email, otpCode, user.name);
 
     return NextResponse.json({
       success: true,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      requireOtp: true,
+      email: user.email,
     });
   } catch (error) {
     console.error("Login error:", error);

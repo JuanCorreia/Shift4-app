@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, User, Mail, Shield, Calendar } from "lucide-react";
+import { Save, User, Mail, Shield, Calendar, BellRing } from "lucide-react";
 import { ROLES } from "@/lib/constants";
 import type { User as UserType } from "@/lib/db/schema";
 
@@ -14,6 +14,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
   const router = useRouter();
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
+  const [emailNotifications, setEmailNotifications] = useState(user.emailNotifications);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -31,7 +32,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({ name, email, emailNotifications }),
       });
       if (res.ok) {
         setMessage("Profile updated.");
@@ -103,6 +104,25 @@ export default function ProfileClient({ user }: ProfileClientProps) {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
             />
+          </div>
+          <div className="flex items-center justify-between py-3 border-t border-slate-100">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+              <BellRing className="h-4 w-4 text-slate-400" />
+              Email Notifications
+            </label>
+            <button
+              type="button"
+              onClick={() => setEmailNotifications(!emailNotifications)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                emailNotifications ? "bg-primary" : "bg-slate-200"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  emailNotifications ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
           </div>
           <div className="flex items-center gap-3 pt-2">
             <button

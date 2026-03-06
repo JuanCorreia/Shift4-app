@@ -14,39 +14,12 @@ import {
 } from 'docx';
 import type { Deal } from '@/lib/db/schema';
 import type { PricingResult } from '@/lib/pricing/types';
+import { getTemplate } from './templates';
 
-const SHIFT4_BLUE = '395542';
-const ACCENT_TEAL = 'CF987E';
-const LIGHT_GRAY = 'f3f4f6';
 const WHITE = 'ffffff';
 
 function formatEur(val: number): string {
   return `EUR ${val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-function headerCell(text: string, width?: number): TableCell {
-  return new TableCell({
-    width: width ? { size: width, type: WidthType.PERCENTAGE } : undefined,
-    shading: { type: ShadingType.SOLID, color: SHIFT4_BLUE, fill: SHIFT4_BLUE },
-    children: [
-      new Paragraph({
-        children: [new TextRun({ text, bold: true, color: WHITE, size: 18, font: 'Calibri' })],
-        spacing: { before: 40, after: 40 },
-      }),
-    ],
-  });
-}
-
-function dataCell(text: string, bold = false, shaded = false): TableCell {
-  return new TableCell({
-    shading: shaded ? { type: ShadingType.SOLID, color: LIGHT_GRAY, fill: LIGHT_GRAY } : undefined,
-    children: [
-      new Paragraph({
-        children: [new TextRun({ text, bold, size: 18, font: 'Calibri' })],
-        spacing: { before: 40, after: 40 },
-      }),
-    ],
-  });
 }
 
 function tableBorders() {
@@ -54,10 +27,40 @@ function tableBorders() {
   return { top: border, bottom: border, left: border, right: border };
 }
 
-export async function generateProposalDocx(deal: Deal): Promise<Buffer> {
+export async function generateProposalDocx(deal: Deal, templateSlug?: string): Promise<Buffer> {
   const pricing = deal.pricingResult as unknown as PricingResult;
   if (!pricing) {
     throw new Error('Deal has no pricing results');
+  }
+
+  const tpl = getTemplate(templateSlug);
+  const SHIFT4_BLUE = tpl.colors.primary;
+  const ACCENT_TEAL = tpl.colors.accent;
+  const LIGHT_GRAY = tpl.colors.lightBg;
+
+  function headerCell(text: string, width?: number): TableCell {
+    return new TableCell({
+      width: width ? { size: width, type: WidthType.PERCENTAGE } : undefined,
+      shading: { type: ShadingType.SOLID, color: SHIFT4_BLUE, fill: SHIFT4_BLUE },
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text, bold: true, color: WHITE, size: 18, font: 'Calibri' })],
+          spacing: { before: 40, after: 40 },
+        }),
+      ],
+    });
+  }
+
+  function dataCell(text: string, bold = false, shaded = false): TableCell {
+    return new TableCell({
+      shading: shaded ? { type: ShadingType.SOLID, color: LIGHT_GRAY, fill: LIGHT_GRAY } : undefined,
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text, bold, size: 18, font: 'Calibri' })],
+          spacing: { before: 40, after: 40 },
+        }),
+      ],
+    });
   }
 
   const date = new Date().toLocaleDateString('en-GB', {

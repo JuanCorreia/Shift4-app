@@ -5,12 +5,22 @@ import { deals } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { partnerFilter } from '@/lib/db/helpers';
 import { renderProposalPdf } from '@/lib/export/pdf';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limit: 10 exports per minute per user
+    const { success: rateLimitOk } = rateLimit(`export-pdf:${session.userId}`, 10, 60000);
+    if (!rateLimitOk) {
+      return NextResponse.json(
+        { error: 'Too many export requests. Try again in a minute.' },
+        { status: 429 }
+      );
     }
 
     const dealId = request.nextUrl.searchParams.get('dealId');
@@ -32,7 +42,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const buffer = await renderProposalPdf(deal);
+    const template = request.nextUrl.searchParams.get('template') || undefined;
+    const buffer = await renderProposalPdf(deal, template);
     const filename = `Banyan_Proposal_${deal.merchantName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
 
     return new NextResponse(new Uint8Array(buffer), {

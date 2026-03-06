@@ -35,3 +35,29 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* Touch-friendly tap targets on mobile */
+@media (pointer: coarse) {
+  button,
+  a,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Smaller elements that still need to be tappable */
+  .text-xs button,
+  nav a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* Safe area for bottom nav */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

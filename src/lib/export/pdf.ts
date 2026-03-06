@@ -3,7 +3,6 @@ import { renderToBuffer } from '@react-pdf/renderer';
 import { createElement } from 'react';
 import type { Deal } from '@/lib/db/schema';
 import type { PricingResult } from '@/lib/pricing/types';
-
 const SHIFT4_BLUE = '#395542';
 const ACCENT_TEAL = '#CF987E';
 const LIGHT_GRAY = '#f3f4f6';
@@ -186,6 +185,7 @@ function formatEur(val: number): string {
 interface ProposalDocProps {
   deal: Deal;
   pricing: PricingResult;
+  template?: string;
 }
 
 function ProposalDocument({ deal, pricing }: ProposalDocProps) {
@@ -381,14 +381,14 @@ function ProposalDocument({ deal, pricing }: ProposalDocProps) {
   );
 }
 
-export async function renderProposalPdf(deal: Deal): Promise<Buffer> {
+export async function renderProposalPdf(deal: Deal, template?: string): Promise<Buffer> {
   const pricing = deal.pricingResult as unknown as PricingResult;
   if (!pricing) {
     throw new Error('Deal has no pricing results');
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const doc = createElement(ProposalDocument, { deal, pricing }) as any;
+  const doc = createElement(ProposalDocument, { deal, pricing, template }) as any;
   const buffer = await renderToBuffer(doc);
   return Buffer.from(buffer);
 }

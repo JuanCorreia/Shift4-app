@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { db } from '@/lib/db';
 import { teamSettings } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { decrypt, isEncrypted } from '@/lib/crypto';
 
 async function getApiKey(partnerId?: string): Promise<string> {
   // Try DB first, scoped to partner
@@ -13,6 +14,10 @@ async function getApiKey(partnerId?: string): Promise<string> {
         .where(eq(teamSettings.partnerId, partnerId))
         .limit(1);
       if (settings?.anthropicApiKey) {
+        // Decrypt if encrypted, otherwise use as-is (backwards compat)
+        if (process.env.ENCRYPTION_KEY && isEncrypted(settings.anthropicApiKey)) {
+          return decrypt(settings.anthropicApiKey);
+        }
         return settings.anthropicApiKey;
       }
     }

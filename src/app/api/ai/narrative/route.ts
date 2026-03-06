@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { dealId } = body;
+    const { dealId, tone } = body;
 
     if (!dealId || typeof dealId !== 'string') {
       return NextResponse.json({ error: 'dealId is required' }, { status: 400 });
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const input = dealToNarrativeInput(deal);
-    const narrative = await generateNarrative(input, session.partnerId ?? undefined);
+    const narrative = await generateNarrative(input, session.partnerId ?? undefined, tone);
 
     await db
       .update(deals)

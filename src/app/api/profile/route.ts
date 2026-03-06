@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email } = body;
+    const { name, email, emailNotifications } = body;
 
     if (!name || typeof name !== "string" || !name.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -36,13 +36,18 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    const updateData: Record<string, unknown> = {
+      name: name.trim(),
+      email: email.trim(),
+      updatedAt: new Date(),
+    };
+    if (typeof emailNotifications === "boolean") {
+      updateData.emailNotifications = emailNotifications;
+    }
+
     await db
       .update(users)
-      .set({
-        name: name.trim(),
-        email: email.trim(),
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(users.id, session.userId));
 
     // Refresh session with new data

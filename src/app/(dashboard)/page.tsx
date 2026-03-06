@@ -12,6 +12,10 @@ import {
   PlusCircle,
   AlertTriangle,
   Archive,
+  TrendingUp,
+  DollarSign,
+  Percent,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { DealTable } from "@/components/deals/DealTable";
@@ -55,6 +59,17 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     const row = statusStats.find((r) => r.status === s);
     return { count: Number(row?.count ?? 0), volume: Number(row?.volume ?? 0) };
   }
+
+  // Revenue metrics from pricing_result JSON
+  const [revenueMetrics] = await db
+    .select({
+      totalSavings: sql<string>`coalesce(sum((pricing_result->>'annualSavings')::numeric), 0)`,
+      totalDccRevenue: sql<string>`coalesce(sum((pricing_result->'dccRevenue'->>'annualRevenue')::numeric), 0)`,
+      avgMargin: sql<string>`coalesce(avg((pricing_result->'marginEstimate'->>'marginPercent')::numeric), 0)`,
+      pipelineValue: sql<string>`coalesce(sum(annual_volume), 0)`,
+    })
+    .from(deals)
+    .where(pf ? sql`${pf} AND status != 'archived'` : sql`status != 'archived'`);
 
   const draft = getStatusStat("draft");
   const review = getStatusStat("review");
@@ -155,6 +170,64 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
                     {card.value}
                   </p>
                   <p className="mt-0.5 text-xs text-slate-400">{card.sub}</p>
+                </div>
+                <div
+                  className={`flex items-center justify-center w-10 h-10 rounded-lg ${card.bg}`}
+                >
+                  <Icon className={`h-5 w-5 ${card.color}`} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Revenue boxes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            label: "Projected Savings",
+            value: fmtVol(Number(revenueMetrics?.totalSavings ?? 0)),
+            icon: TrendingUp,
+            color: "text-emerald-600",
+            bg: "bg-emerald-50",
+          },
+          {
+            label: "DCC Revenue",
+            value: fmtVol(Number(revenueMetrics?.totalDccRevenue ?? 0)),
+            icon: DollarSign,
+            color: "text-violet-600",
+            bg: "bg-violet-50",
+          },
+          {
+            label: "Avg Margin",
+            value: `${Number(revenueMetrics?.avgMargin ?? 0).toFixed(1)} bps`,
+            icon: Percent,
+            color: "text-orange-600",
+            bg: "bg-orange-50",
+          },
+          {
+            label: "Pipeline Value",
+            value: fmtVol(Number(revenueMetrics?.pipelineValue ?? 0)),
+            icon: BarChart3,
+            color: "text-blue-600",
+            bg: "bg-blue-50",
+          },
+        ].map((card) => {
+          const Icon = card.icon;
+          return (
+            <div
+              key={card.label}
+              className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">
+                    {card.label}
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-slate-900">
+                    {card.value}
+                  </p>
                 </div>
                 <div
                   className={`flex items-center justify-center w-10 h-10 rounded-lg ${card.bg}`}

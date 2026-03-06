@@ -4,6 +4,7 @@ import { eq, like, desc, asc, sql, and, gte, lte, SQL } from "drizzle-orm";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
+import { DealCard } from "./DealCard";
 import { getSession } from "@/lib/auth/session";
 import { partnerFilter } from "@/lib/db/helpers";
 
@@ -128,8 +129,25 @@ export async function DealTable({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      {/* Table */}
+    <div>
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3 mb-4">
+        {dealRows.map((deal) => (
+          <DealCard
+            key={deal.id}
+            id={deal.id}
+            merchantName={deal.merchantName}
+            hotelGroup={deal.hotelGroup}
+            annualVolume={deal.annualVolume}
+            status={deal.status}
+            createdAt={deal.createdAt}
+            tier={getTierLabel(deal.annualVolume)}
+          />
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -228,6 +246,7 @@ export async function DealTable({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

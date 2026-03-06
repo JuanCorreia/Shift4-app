@@ -18,6 +18,7 @@ export const DEAL_STATUSES = {
 export const NAV_ITEMS = [
   { label: 'Dashboard', href: '/', icon: 'LayoutDashboard' },
   { label: 'New Deal', href: '/deals/new', icon: 'PlusCircle' },
+  { label: 'Reports', href: '/reports', icon: 'BarChart3' },
   { label: 'Settings', href: '/settings', icon: 'Settings' },
   { label: 'Partners', href: '/partners', icon: 'Building2' },
 ] as const;

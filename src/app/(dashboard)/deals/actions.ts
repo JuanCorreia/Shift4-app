@@ -1,13 +1,14 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { deals, dealHistory } from "@/lib/db/schema";
+import { deals, dealHistory, notifications, users, pricingSnapshots } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 import { dealFormSchema } from "@/lib/validators/deal";
 import { eq, and } from "drizzle-orm";
 import { partnerFilter } from "@/lib/db/helpers";
 import { revalidatePath } from "next/cache";
 import { calculatePricing } from "@/lib/pricing/engine";
+import { sendDealStatusEmail } from "@/lib/email";
 import type { PricingInput } from "@/lib/pricing";
 
 export async function createDeal(data: unknown) {
@@ -84,6 +85,15 @@ export async function createDeal(data: unknown) {
     userId: session.userId,
     action: "created",
   });
+
+  // Save pricing snapshot
+  if (pricingResult) {
+    await db.insert(pricingSnapshots).values({
+      dealId: deal.id,
+      pricingResult,
+      triggerAction: "created",
+    });
+  }
 
   revalidatePath("/");
   revalidatePath("/deals");
@@ -189,7 +199,15 @@ export async function updateDeal(id: string, data: unknown) {
         propertyCount: Number(merged.propertyCount ?? 1),
         starRating: Number(merged.starRating ?? 4),
       };
-      updateValues.pricingResult = calculatePricing(recalcInput);
+      const newPricing = calculatePricing(recalcInput);
+      updateValues.pricingResult = newPricing;
+
+      // Save pricing snapshot on recalculation
+      await db.insert(pricingSnapshots).values({
+        dealId: id,
+        pricingResult: newPricing,
+        triggerAction: "updated",
+      });
     }
 
     await db.update(deals).set(updateValues).where(eq(deals.id, id));
@@ -284,6 +302,48 @@ export async function updateDealStatus(id: string, newStatus: "draft" | "review"
     oldValue: existing.status,
     newValue: newStatus,
   });
+
+  // Notify deal creator and assigned user
+  const notifyUserIds = new Set<string>();
+  if (existing.createdBy && existing.createdBy !== session.userId) {
+    notifyUserIds.add(existing.createdBy);
+  }
+  if (existing.assignedTo && existing.assignedTo !== session.userId) {
+    notifyUserIds.add(existing.assignedTo);
+  }
+
+  for (const userId of Array.from(notifyUserIds)) {
+    // Insert in-app notification
+    await db.insert(notifications).values({
+      userId,
+      type: "status_change",
+      title: `Deal status updated`,
+      message: `"${existing.merchantName}" moved to ${newStatus}`,
+      dealId: id,
+    });
+
+    // Send email if user has notifications enabled
+    try {
+      const [user] = await db
+        .select({ name: users.name, email: users.email, emailNotifications: users.emailNotifications })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (user?.emailNotifications) {
+        await sendDealStatusEmail(
+          user.email,
+          user.name,
+          existing.merchantName,
+          existing.status,
+          newStatus,
+          id
+        );
+      }
+    } catch (e) {
+      console.error("Failed to send status email:", e);
+    }
+  }
 
   revalidatePath("/");
   revalidatePath(`/deals/${id}`);

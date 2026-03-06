@@ -1,5 +1,5 @@
 import { createChatCompletion } from './client';
-import { NARRATIVE_SYSTEM_PROMPT } from './prompts/narrative-system';
+import { getNarrativeSystemPrompt } from './prompts/narrative-system';
 import type { Deal } from '@/lib/db/schema';
 import type { PricingResult } from '@/lib/pricing/types';
 
@@ -81,14 +81,15 @@ export function dealToNarrativeInput(deal: Deal): NarrativeInput {
   };
 }
 
-export async function generateNarrative(data: NarrativeInput, partnerId?: string): Promise<string> {
+export async function generateNarrative(data: NarrativeInput, partnerId?: string, tone?: string): Promise<string> {
   const prompt = buildNarrativePrompt(data);
+  const systemPrompt = getNarrativeSystemPrompt(tone || "formal");
 
   const response = await createChatCompletion(
     [{ role: 'user', content: prompt }],
     {
-      system: NARRATIVE_SYSTEM_PROMPT,
-      max_tokens: 2048,
+      system: systemPrompt,
+      max_tokens: 3000,
       partnerId,
     }
   );

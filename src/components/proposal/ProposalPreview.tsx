@@ -38,6 +38,8 @@ function formatEur(val: number): string {
 
 export default function ProposalPreview({ deal }: ProposalPreviewProps) {
   const [narrative, setNarrative] = useState(deal.narrative || '');
+  const [tone, setTone] = useState<string>('formal');
+  const [template, setTemplate] = useState<string>('standard');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
@@ -57,7 +59,7 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
       const res = await fetch('/api/ai/narrative', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId: deal.id }),
+        body: JSON.stringify({ dealId: deal.id, tone }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -70,14 +72,14 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
     } finally {
       setIsGenerating(false);
     }
-  }, [deal.id]);
+  }, [deal.id, tone]);
 
   const handleExport = useCallback(async (format: 'pdf' | 'docx') => {
     const setLoading = format === 'pdf' ? setIsExportingPdf : setIsExportingDocx;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/export/${format}?dealId=${deal.id}`);
+      const res = await fetch(`/api/export/${format}?dealId=${deal.id}&template=${template}`);
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || `Failed to export ${format.toUpperCase()}`);
@@ -96,10 +98,43 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
     } finally {
       setLoading(false);
     }
-  }, [deal.id, deal.merchantName]);
+  }, [deal.id, deal.merchantName, template]);
 
   return (
     <div className="space-y-6">
+      {/* Template selector */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { slug: 'standard', name: 'Standard', desc: 'Banyan green + terracotta', color: '#395542', accent: '#CF987E' },
+          { slug: 'premium', name: 'Premium', desc: 'Dark navy + gold', color: '#1a1a2e', accent: '#c4a265' },
+          { slug: 'minimal', name: 'Minimal', desc: 'Clean white + gray', color: '#374151', accent: '#9ca3af' },
+        ].map((t) => (
+          <button
+            key={t.slug}
+            onClick={() => setTemplate(t.slug)}
+            className={`relative p-4 rounded-xl border-2 text-left transition-all ${
+              template === t.slug
+                ? 'border-primary shadow-md'
+                : 'border-slate-200 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: t.color }} />
+              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: t.accent }} />
+            </div>
+            <p className="text-sm font-semibold text-slate-900">{t.name}</p>
+            <p className="text-xs text-slate-500">{t.desc}</p>
+            {template === t.slug && (
+              <div className="absolute top-2 right-2 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* Toolbar */}
       <div className="flex items-center justify-between">
         <Link
@@ -110,6 +145,15 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
           Back to Deal
         </Link>
         <div className="flex items-center gap-3">
+          <select
+            value={tone}
+            onChange={(e) => setTone(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#395542]/20"
+          >
+            <option value="formal">Formal</option>
+            <option value="conversational">Conversational</option>
+            <option value="technical">Technical</option>
+          </select>
           <button
             onClick={handleGenerate}
             disabled={isGenerating}

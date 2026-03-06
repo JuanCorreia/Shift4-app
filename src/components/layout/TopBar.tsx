@@ -2,9 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Menu, LogOut } from "lucide-react";
+import { useState } from "react";
+import { Menu, LogOut, Globe } from "lucide-react";
 import { openMobileMenu } from "./SidebarClient";
 import { ROLES } from "@/lib/constants";
+import NotificationBell from "./NotificationBell";
+import { LOCALES } from "@/lib/i18n/messages";
+import type { Locale } from "@/lib/i18n/messages";
 
 interface TopBarProps {
   userName: string;
@@ -14,6 +18,13 @@ interface TopBarProps {
 
 export default function TopBar({ userName, userRole, partnerName }: TopBarProps) {
   const router = useRouter();
+  const [locale, setLocale] = useState<Locale>(() => {
+    if (typeof document !== "undefined") {
+      const cookie = document.cookie.split("; ").find((c) => c.startsWith("locale="));
+      return (cookie?.split("=")[1] as Locale) || "en";
+    }
+    return "en";
+  });
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -35,8 +46,28 @@ export default function TopBar({ userName, userRole, partnerName }: TopBarProps)
         </button>
       </div>
 
-      {/* Right: partner badge + user info + logout */}
+      {/* Right: language + notifications + partner badge + user info + logout */}
       <div className="flex items-center gap-4">
+        <div className="relative flex items-center">
+          <Globe className="h-4 w-4 text-slate-400 absolute left-2 pointer-events-none" />
+          <select
+            value={locale}
+            onChange={(e) => {
+              const newLocale = e.target.value as Locale;
+              setLocale(newLocale);
+              document.cookie = `locale=${newLocale};path=/;max-age=31536000`;
+              router.refresh();
+            }}
+            className="pl-7 pr-2 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-600 appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary/20"
+          >
+            {LOCALES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.flag}
+              </option>
+            ))}
+          </select>
+        </div>
+        <NotificationBell />
         {partnerName && (
           <span className="hidden sm:inline-flex items-center px-2.5 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full">
             {partnerName}

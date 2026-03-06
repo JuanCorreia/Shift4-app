@@ -31,6 +31,7 @@ export const users = pgTable("users", {
   role: roleEnum("role").notNull().default("analyst"),
   partnerId: uuid("partner_id").references(() => partners.id),
   inviteCode: varchar("invite_code", { length: 255 }),
+  emailNotifications: boolean("email_notifications").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -40,7 +41,8 @@ export const teamSettings = pgTable("team_settings", {
   partnerId: uuid("partner_id").references(() => partners.id).notNull(),
   inviteCode: varchar("invite_code", { length: 255 }).notNull().unique(),
   teamName: varchar("team_name", { length: 255 }).notNull(),
-  anthropicApiKey: varchar("anthropic_api_key", { length: 255 }),
+  anthropicApiKey: varchar("anthropic_api_key", { length: 500 }),
+  narrativeTone: varchar("narrative_tone", { length: 20 }).default("formal"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -151,6 +153,59 @@ export const otpCodes = pgTable('otp_codes', {
 });
 
 export type OtpCode = typeof otpCodes.$inferSelect;
+
+// Login attempts for lockout
+export const loginAttempts = pgTable('login_attempts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  email: varchar('email', { length: 255 }).notNull(),
+  ip: varchar('ip', { length: 100 }).notNull(),
+  userAgent: varchar('user_agent', { length: 500 }),
+  success: boolean('success').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type LoginAttempt = typeof loginAttempts.$inferSelect;
+
+// In-app notifications
+export const notifications = pgTable('notifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  dealId: uuid('deal_id').references(() => deals.id, { onDelete: 'cascade' }),
+  read: boolean('read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+
+// Pricing snapshots for price history
+export const pricingSnapshots = pgTable('pricing_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  dealId: uuid('deal_id').references(() => deals.id, { onDelete: 'cascade' }).notNull(),
+  snapshotAt: timestamp('snapshot_at').defaultNow().notNull(),
+  pricingResult: jsonb('pricing_result').notNull(),
+  triggerAction: varchar('trigger_action', { length: 50 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type PricingSnapshot = typeof pricingSnapshots.$inferSelect;
+
+// Audit log
+export const auditLog = pgTable('audit_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id),
+  action: varchar('action', { length: 100 }).notNull(),
+  resource: varchar('resource', { length: 100 }).notNull(),
+  resourceId: varchar('resource_id', { length: 255 }),
+  details: jsonb('details'),
+  ip: varchar('ip', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type AuditLogEntry = typeof auditLog.$inferSelect;
 
 // Inferred types for deals
 export type Deal = typeof deals.$inferSelect;
