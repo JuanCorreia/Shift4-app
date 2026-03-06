@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth/session";
+import { jwtVerify } from "jose";
 
 const PUBLIC_PATHS = ["/login", "/api/auth"];
 
-export function middleware(request: NextRequest) {
+function getSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) return null;
+  return new TextEncoder().encode(secret);
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public paths
@@ -11,7 +17,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow Next.js internals and known static extensions only
+  // Allow Next.js internals and known static extensions
   if (
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico" ||
@@ -20,26 +26,27 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Verify JWT signature (not just cookie existence)
   const token = request.cookies.get("shift4_session")?.value;
 
   if (!token) {
-    // API routes get 401, pages get redirected
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const payload = verifyToken(token);
-  if (!payload) {
-    // Invalid/expired token
-    const response = pathname.startsWith("/api/")
-      ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      : NextResponse.redirect(new URL("/login", request.url));
-    response.cookies.delete("shift4_session");
-    return response;
+  // Verify JWT using jose (Edge-compatible)
+  const secret = getSecret();
+  if (secret) {
+    try {
+      await jwtVerify(token, secret);
+    } catch {
+      const response = pathname.startsWith("/api/")
+        ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        : NextResponse.redirect(new URL("/login", request.url));
+      response.cookies.delete("shift4_session");
+      return response;
+    }
   }
 
   return NextResponse.next();
