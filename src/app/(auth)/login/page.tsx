@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [inviteCode, setInviteCode] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,7 +29,7 @@ export default function LoginPage() {
       }
 
       if (data.success) {
-        router.push("/");
+        window.location.href = "/";
       }
     } catch {
       setError("Network error. Please try again.");
