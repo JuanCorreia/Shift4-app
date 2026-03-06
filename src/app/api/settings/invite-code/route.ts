@@ -34,10 +34,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Verify team belongs to user's partner (unless super_admin)
+    if (session.role !== "super_admin" && !session.partnerId) {
+      return NextResponse.json({ error: "No partner assigned" }, { status: 403 });
+    }
     const updateCondition =
-      session.role === "super_admin" || !session.partnerId
+      session.role === "super_admin"
         ? eq(teamSettings.id, teamId)
-        : and(eq(teamSettings.id, teamId), eq(teamSettings.partnerId, session.partnerId));
+        : and(eq(teamSettings.id, teamId), eq(teamSettings.partnerId, session.partnerId!));
 
     // Hash invite code before storing
     const hashedCode = await bcrypt.hash(inviteCode, 10);

@@ -35,7 +35,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Verify user belongs to same partner (unless super_admin)
-    if (session.role !== "super_admin" && session.partnerId) {
+    if (session.role !== "super_admin") {
+      if (!session.partnerId) {
+        return NextResponse.json({ error: "No partner assigned" }, { status: 403 });
+      }
       const [targetUser] = await db
         .select({ partnerId: users.partnerId })
         .from(users)

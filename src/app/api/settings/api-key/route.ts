@@ -46,16 +46,24 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    // Encrypt API key before storing if ENCRYPTION_KEY is set
+    // Encrypt API key before storing — require ENCRYPTION_KEY
     let storedKey: string | null = null;
     if (apiKey) {
-      storedKey = process.env.ENCRYPTION_KEY ? encrypt(apiKey) : apiKey;
+      if (!process.env.ENCRYPTION_KEY) {
+        console.error("ENCRYPTION_KEY not set — refusing to store API key in plaintext");
+        return NextResponse.json(
+          { error: "Server configuration error. Contact administrator." },
+          { status: 500 }
+        );
+      }
+      storedKey = encrypt(apiKey);
     }
 
+    // Use partner-scoped condition on UPDATE (not just teamId)
     await db
       .update(teamSettings)
       .set({ anthropicApiKey: storedKey, updatedAt: new Date() })
-      .where(eq(teamSettings.id, teamId));
+      .where(conditions);
 
     await logAuditEvent({
       userId: session.userId,

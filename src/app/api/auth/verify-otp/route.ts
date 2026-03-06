@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users, partners } from "@/lib/db/schema";
+import { users, partners, loginAttempts } from "@/lib/db/schema";
 import { createSession } from "@/lib/auth/session";
 import { verifyOtp } from "@/lib/auth/otp";
 import { rateLimit } from "@/lib/rate-limit";
@@ -49,6 +49,24 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Block deactivated users
+    if (!user.active) {
+      return NextResponse.json(
+        { error: "Account deactivated. Contact your administrator." },
+        { status: 403 }
+      );
+    }
+
+    // Log successful login (after OTP verified)
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const userAgent = request.headers.get("user-agent") || undefined;
+    await db.insert(loginAttempts).values({
+      email: user.email,
+      ip,
+      userAgent,
+      success: true,
+    });
 
     // Resolve partner name
     let partnerName: string | undefined;

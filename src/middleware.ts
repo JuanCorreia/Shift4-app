@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { verifyToken } from "@/lib/auth/session";
 
 const PUBLIC_PATHS = ["/login", "/api/auth"];
 
@@ -10,21 +11,35 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow static files and Next.js internals
+  // Allow Next.js internals and known static extensions only
   if (
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon.ico") ||
-    pathname.includes(".")
+    pathname === "/favicon.ico" ||
+    /\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|map)$/.test(pathname)
   ) {
     return NextResponse.next();
   }
 
-  // Check for session cookie (full JWT verification happens in server components/API routes)
+  // Verify JWT signature (not just cookie existence)
   const token = request.cookies.get("shift4_session")?.value;
 
   if (!token) {
+    // API routes get 401, pages get redirected
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
+  }
+
+  const payload = verifyToken(token);
+  if (!payload) {
+    // Invalid/expired token
+    const response = pathname.startsWith("/api/")
+      ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      : NextResponse.redirect(new URL("/login", request.url));
+    response.cookies.delete("shift4_session");
+    return response;
   }
 
   return NextResponse.next();

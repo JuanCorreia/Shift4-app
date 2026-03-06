@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { partners, teamSettings } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
+import bcrypt from "bcryptjs";
 
 export async function GET() {
   try {
@@ -68,15 +69,17 @@ export async function POST(request: NextRequest) {
       .values({ name, slug, logoUrl: logoUrl || null })
       .returning();
 
-    // Create team_settings for the new partner
-    const code = inviteCode || `${slug}-${Math.random().toString(36).slice(2, 8)}`;
+    // Create team_settings for the new partner with hashed invite code
+    const plainCode = inviteCode || `${slug}-${Math.random().toString(36).slice(2, 8)}`;
+    const hashedCode = await bcrypt.hash(plainCode, 10);
     await db.insert(teamSettings).values({
       partnerId: partner.id,
-      inviteCode: code,
+      inviteCode: hashedCode,
       teamName: name,
     });
 
-    return NextResponse.json({ ...partner, inviteCode: code }, { status: 201 });
+    // Return plaintext code once so admin can share it (not stored)
+    return NextResponse.json({ ...partner, inviteCode: plainCode }, { status: 201 });
   } catch (error) {
     console.error("Create partner error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

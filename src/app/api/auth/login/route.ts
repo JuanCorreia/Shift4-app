@@ -124,14 +124,7 @@ export async function POST(request: NextRequest) {
       user = created[0];
     }
 
-    // Log successful login attempt
-    await db.insert(loginAttempts).values({
-      email,
-      ip,
-      userAgent,
-      success: true,
-    });
-
+    // Note: success is logged after OTP verification, not here
     // Generate OTP and send via email
     const otpCode = await createOtp(user.id, user.email);
     await sendOtpEmail(user.email, otpCode, user.name);
