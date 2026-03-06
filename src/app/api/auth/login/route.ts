@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq, and, gt, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { users, teamSettings, loginAttempts } from "@/lib/db/schema";
+import { users, teamSettings, partners, loginAttempts } from "@/lib/db/schema";
 import { loginSchema } from "@/lib/validators/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { createOtp } from "@/lib/auth/otp";
-import { sendOtpEmail } from "@/lib/email";
+import { createSession } from "@/lib/auth/session";
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,7 +58,6 @@ export async function POST(request: NextRequest) {
 
     let matchedTeam = null;
     for (const team of allTeams) {
-      // Support both hashed and plaintext codes (backwards compat)
       const isHashed = team.inviteCode.startsWith("$2");
       const isMatch = isHashed
         ? await bcrypt.compare(inviteCode, team.inviteCode)
@@ -72,7 +70,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (!matchedTeam) {
-      // Log failed attempt
       await db.insert(loginAttempts).values({
         email,
         ip,
@@ -124,21 +121,38 @@ export async function POST(request: NextRequest) {
       user = created[0];
     }
 
-    // Note: success is logged after OTP verification, not here
-    // Generate OTP and send via email
-    const otpCode = await createOtp(user.id, user.email);
-    try {
-      await sendOtpEmail(user.email, otpCode, user.name);
-    } catch (emailErr) {
-      console.error("Failed to send OTP email:", emailErr);
-      // In development / missing SMTP, log the code so login still works
-      console.log(`[DEV] OTP code for ${user.email}: ${otpCode}`);
+    // Log successful login
+    await db.insert(loginAttempts).values({
+      email: user.email,
+      ip,
+      userAgent,
+      success: true,
+    });
+
+    // Resolve partner name
+    let partnerName: string | undefined;
+    if (user.partnerId) {
+      const [partner] = await db
+        .select({ name: partners.name })
+        .from(partners)
+        .where(eq(partners.id, user.partnerId))
+        .limit(1);
+      partnerName = partner?.name;
     }
+
+    // Create session directly (no OTP)
+    await createSession({
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      partnerId: user.partnerId,
+      partnerName,
+    });
 
     return NextResponse.json({
       success: true,
-      requireOtp: true,
-      email: user.email,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
     });
   } catch (error) {
     console.error("Login error:", error);
