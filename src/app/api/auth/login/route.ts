@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { users, teamSettings, partners, loginAttempts } from "@/lib/db/schema";
 import { loginSchema } from "@/lib/validators/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { createSession } from "@/lib/auth/session";
+import { createToken } from "@/lib/auth/session";
 
 export async function POST(request: NextRequest) {
   try {
@@ -140,8 +140,8 @@ export async function POST(request: NextRequest) {
       partnerName = partner?.name;
     }
 
-    // Create session directly (no OTP)
-    await createSession({
+    // Create session token and set cookie on response
+    const token = createToken({
       userId: user.id,
       email: user.email,
       name: user.name,
@@ -150,10 +150,20 @@ export async function POST(request: NextRequest) {
       partnerName,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
     });
+
+    response.cookies.set("shift4_session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
