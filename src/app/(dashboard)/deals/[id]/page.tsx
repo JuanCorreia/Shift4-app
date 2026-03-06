@@ -284,6 +284,177 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
             </div>
           </div>
 
+          {/* Acquiring Revenue Breakdown */}
+          {pricingResult && (() => {
+            const annualVol = Number(deal.annualVolume);
+            const avgTxSize = Number(deal.avgTransactionSize);
+            const dcc = pricingResult.dccRevenue as Record<string, unknown> | null;
+
+            // Acquiring revenue
+            const currentRate = deal.currentBlendedRate ? Number(deal.currentBlendedRate) : 0;
+            const adjustedRate = Number(pricingResult.adjustedRate ?? 0);
+            const baseRate = Number(pricingResult.baseRate ?? 0);
+            const eligibleVolume = annualVol;
+            const currentAcquirerRevenue = (eligibleVolume * currentRate) / 10000;
+            const ourRevenueRateA = (eligibleVolume * adjustedRate) / 10000;
+            const ourRevenueRateB = (eligibleVolume * baseRate) / 10000;
+
+            // Transaction fee revenue
+            const estTxCount = avgTxSize > 0 ? Math.round(annualVol / avgTxSize) : 0;
+            const currentTxFee = deal.currentTxFee ? Number(deal.currentTxFee) : 0;
+            const currentTxRevenue = estTxCount * currentTxFee;
+            const ourTxFee = Number(pricingResult.proposedTxFee ?? 0);
+            const ourTxRevenue = estTxCount * ourTxFee;
+            const ourTxCost = estTxCount * 0.01;
+            const ourTxNet = ourTxRevenue - ourTxCost;
+
+            // DCC revenue
+            const dccAnnualRevenue = dcc ? Number(dcc.annualRevenue ?? 0) : 0;
+            const dccShareHost = dcc ? Number(dcc.revenueShareHost ?? 0) : 0;
+
+            // Totals (Rate A)
+            const totalCurrentRevenue = currentAcquirerRevenue + currentTxRevenue;
+            const totalOurRevenueA = ourRevenueRateA + ourTxNet + dccShareHost;
+
+            return (
+              <div className="mt-6 space-y-4">
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
+                  Acquiring Revenue Breakdown
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {/* Box 1: Acquiring Revenue */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h4 className="text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-3">
+                      Acquiring Revenue
+                    </h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Eligible Volume</span>
+                        <span className="font-medium">{formatCurrency(String(eligibleVolume))}</span>
+                      </div>
+                      <div className="border-t border-gray-100 pt-2">
+                        <p className="text-xs text-gray-400 mb-1">Current Acquirer</p>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Revenue at {currentRate} bps</span>
+                          <span className="font-medium">{formatCurrency(String(Math.round(currentAcquirerRevenue)))}</span>
+                        </div>
+                      </div>
+                      <div className="border-t border-gray-100 pt-2">
+                        <p className="text-xs text-gray-400 mb-1">Our Revenue</p>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Rate A ({adjustedRate.toFixed(0)} bps)</span>
+                          <span className="font-semibold text-emerald-700">{formatCurrency(String(Math.round(ourRevenueRateA)))}</span>
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span className="text-gray-500">Rate B ({baseRate.toFixed(0)} bps)</span>
+                          <span className="font-medium text-gray-700">{formatCurrency(String(Math.round(ourRevenueRateB)))}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Box 2: Transaction Fee Revenue */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h4 className="text-xs font-semibold text-violet-700 uppercase tracking-wider mb-3">
+                      Transaction Fee Revenue
+                    </h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Est. Transaction Count</span>
+                        <span className="font-medium">{estTxCount.toLocaleString()}</span>
+                      </div>
+                      <div className="border-t border-gray-100 pt-2">
+                        <p className="text-xs text-gray-400 mb-1">Current Acquirer</p>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Fee: &euro;{currentTxFee.toFixed(4)}</span>
+                          <span className="font-medium">{formatCurrency(String(Math.round(currentTxRevenue)))}</span>
+                        </div>
+                      </div>
+                      <div className="border-t border-gray-100 pt-2">
+                        <p className="text-xs text-gray-400 mb-1">Our Suggested</p>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Fee: &euro;{ourTxFee.toFixed(2)}</span>
+                          <span className="font-medium">{formatCurrency(String(Math.round(ourTxRevenue)))}</span>
+                        </div>
+                        <div className="flex justify-between mt-1 text-xs">
+                          <span className="text-gray-400">Our cost: &euro;0.01/tx</span>
+                          <span className="text-gray-400">Net: {formatCurrency(String(Math.round(ourTxNet)))}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Box 3: DCC Revenue (or placeholder) */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h4 className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-3">
+                      DCC Revenue
+                    </h4>
+                    {dcc && dccAnnualRevenue > 0 ? (
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Eligible Intl Volume</span>
+                          <span className="font-medium">{formatCurrency(String(Math.round(Number(dcc.eligibleVolume ?? 0))))}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Projected Uptake</span>
+                          <span className="font-medium">{formatCurrency(String(Math.round(Number(dcc.projectedUptake ?? 0))))}</span>
+                        </div>
+                        <div className="border-t border-gray-100 pt-2">
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">Annual DCC Revenue</span>
+                            <span className="font-semibold text-amber-700">{formatCurrency(String(Math.round(dccAnnualRevenue)))}</span>
+                          </div>
+                          <div className="flex justify-between mt-1 text-xs">
+                            <span className="text-gray-400">Merchant share</span>
+                            <span className="text-gray-400">{formatCurrency(String(Math.round(Number(dcc.revenueShareMerchant ?? 0))))}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-400">Our share</span>
+                            <span className="text-gray-400">{formatCurrency(String(Math.round(dccShareHost)))}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-400 text-center py-6">
+                        <p>Not DCC eligible</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Summary box */}
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
+                  <h4 className="text-xs font-semibold text-emerald-900 uppercase tracking-wider mb-3">
+                    Revenue Summary
+                  </h4>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-xs text-emerald-700">Acquiring Revenue (Rate A)</p>
+                      <p className="text-lg font-bold text-emerald-900">{formatCurrency(String(Math.round(ourRevenueRateA)))}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-emerald-700">Transaction Fee Net</p>
+                      <p className="text-lg font-bold text-emerald-900">{formatCurrency(String(Math.round(ourTxNet)))}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-emerald-700">DCC Share</p>
+                      <p className="text-lg font-bold text-emerald-900">{formatCurrency(String(Math.round(dccShareHost)))}</p>
+                    </div>
+                    <div className="border-l-2 border-emerald-300 pl-4">
+                      <p className="text-xs text-emerald-700 font-semibold">Total Revenue</p>
+                      <p className="text-xl font-bold text-emerald-900">{formatCurrency(String(Math.round(totalOurRevenueA)))}</p>
+                      {totalCurrentRevenue > 0 && (
+                        <p className="text-xs text-emerald-600 mt-0.5">
+                          vs current: {formatCurrency(String(Math.round(totalCurrentRevenue)))}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Narrative */}
           {deal.narrative && (
             <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">

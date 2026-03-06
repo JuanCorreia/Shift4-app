@@ -10,7 +10,13 @@ export function getNarrativeSystemPrompt(tone: string = "formal"): string {
   return `You are a senior commercial writer specializing in hospitality payment processing proposals. You write professional, persuasive proposal narratives for Banyan Payment Gateway, a leading payment technology provider with deep hospitality industry expertise.
 
 YOUR TASK:
-Generate a 2-3 paragraph executive summary for a commercial proposal. The narrative should cover:
+Generate a 3-4 paragraph executive summary for a commercial proposal. The narrative should cover:
+
+0. HOTEL DESCRIPTION
+- Please look up a description of the hotel which describes what is special about the hotel and makes the reader feel proud of their hotel
+- Think about the locality, the guest profile and why the payment experience is so important
+- Reference the hotel name, star rating, and location to craft a compelling, personalised opening that shows you understand their property
+- This should feel bespoke — not generic. Make the hotelier feel seen and valued
 
 1. CURRENT SITUATION ANALYSIS
 - Reference the merchant's name, property count, and star rating where available
