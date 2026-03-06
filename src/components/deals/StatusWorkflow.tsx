@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Check, ChevronRight, AlertTriangle, Archive, Send, ShieldCheck, Eye, Loader2 } from 'lucide-react';
-import { updateDealStatus } from '@/app/(dashboard)/deals/actions';
+import { Check, ChevronRight, AlertTriangle, Archive, Send, ShieldCheck, Eye, Loader2, Trash2 } from 'lucide-react';
+import { updateDealStatus, permanentlyDeleteDeal } from '@/app/(dashboard)/deals/actions';
+import { useRouter } from 'next/navigation';
 
 type DealStatus = 'draft' | 'review' | 'approved' | 'sent' | 'archived';
 type UserRole = 'analyst' | 'admin' | 'viewer';
@@ -63,6 +64,8 @@ function getAvailableActions(currentStatus: DealStatus, userRole: UserRole) {
 export default function StatusWorkflow({ dealId, currentStatus, userRole }: StatusWorkflowProps) {
   const [isPending, startTransition] = useTransition();
   const [confirmTarget, setConfirmTarget] = useState<DealStatus | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const router = useRouter();
 
   const currentIdx = STATUS_ORDER.indexOf(currentStatus);
   const actions = getAvailableActions(currentStatus, userRole);
@@ -72,6 +75,13 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
     startTransition(async () => {
       await updateDealStatus(dealId, confirmTarget);
       setConfirmTarget(null);
+    });
+  }
+
+  function handlePermanentDelete() {
+    startTransition(async () => {
+      await permanentlyDeleteDeal(dealId);
+      router.push('/');
     });
   }
 
@@ -150,6 +160,20 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
         </div>
       )}
 
+      {/* Permanent delete for archived deals (admin only) */}
+      {currentStatus === 'archived' && canArchive(userRole) && (
+        <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+          <button
+            onClick={() => setConfirmDelete(true)}
+            disabled={isPending}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Permanently
+          </button>
+        </div>
+      )}
+
       {userRole === 'viewer' && (
         <p className="text-xs text-gray-400 pt-4 border-t border-gray-100">
           You have read-only access to this deal.
@@ -189,6 +213,36 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
               >
                 {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                 Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Permanent delete confirmation */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-red-700 mb-2">
+              Delete Deal Permanently
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              This will permanently delete this deal and all its history. This action <span className="font-semibold text-red-600">cannot be undone</span>.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={isPending}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePermanentDelete}
+                disabled={isPending}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-500 transition-colors"
+              >
+                {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Delete Forever
               </button>
             </div>
           </div>

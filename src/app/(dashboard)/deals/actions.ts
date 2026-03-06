@@ -240,6 +240,28 @@ export async function deleteDeal(id: string) {
   revalidatePath(`/deals/${id}`);
 }
 
+export async function permanentlyDeleteDeal(id: string) {
+  const session = await getSession();
+  if (!session) throw new Error("Unauthorized");
+  if (session.role !== "admin" && session.role !== "super_admin") {
+    throw new Error("Only admins can permanently delete deals");
+  }
+
+  const pf = partnerFilter(session);
+  const conditions = pf ? and(eq(deals.id, id), pf) : eq(deals.id, id);
+  const [existing] = await db.select().from(deals).where(conditions);
+  if (!existing) throw new Error("Deal not found");
+  if (existing.status !== "archived") {
+    throw new Error("Only archived deals can be permanently deleted");
+  }
+
+  // Hard delete — cascades to deal_history and escalations
+  await db.delete(deals).where(eq(deals.id, id));
+
+  revalidatePath("/");
+  revalidatePath("/deals");
+}
+
 export async function updateDealStatus(id: string, newStatus: "draft" | "review" | "approved" | "sent" | "archived") {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");

@@ -2,15 +2,16 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { deals, escalations } from "@/lib/db/schema";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { partnerFilter } from "@/lib/db/helpers";
 import {
   FileText,
   Clock,
-  DollarSign,
-  TrendingDown,
+  ShieldCheck,
+  Send,
   PlusCircle,
   AlertTriangle,
+  Archive,
 } from "lucide-react";
 import Link from "next/link";
 import { DealTable } from "@/components/deals/DealTable";
@@ -39,48 +40,27 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   // Partner scoping
   const pf = partnerFilter(session);
 
-  // Fetch stats from DB - counts by status
-  const [totalDeals] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(deals)
-    .where(pf);
-
-  const [draftDeals] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(deals)
-    .where(and(eq(deals.status, "draft"), pf));
-
-  const [reviewDeals] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(deals)
-    .where(and(eq(deals.status, "review"), pf));
-
-  const [approvedDeals] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(deals)
-    .where(and(eq(deals.status, "approved"), pf));
-
-  const [sentDeals] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(deals)
-    .where(and(eq(deals.status, "sent"), pf));
-
-  const [archivedDeals] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(deals)
-    .where(and(eq(deals.status, "archived"), pf));
-
-  const [volumeResult] = await db
-    .select({ total: sql<string>`coalesce(sum(annual_volume), 0)` })
-    .from(deals)
-    .where(pf);
-
-  const [savingsResult] = await db
+  // Fetch stats by status — count + volume per pipeline stage
+  const statusStats = await db
     .select({
-      avg: sql<string>`coalesce(avg((pricing_result->>'savingsPercent')::numeric), 0)`,
+      status: deals.status,
+      count: sql<number>`count(*)`,
+      volume: sql<string>`coalesce(sum(annual_volume), 0)`,
     })
     .from(deals)
-    .where(and(sql`pricing_result is not null and pricing_result->>'savingsPercent' is not null`, pf));
+    .where(pf)
+    .groupBy(deals.status);
+
+  function getStatusStat(s: string) {
+    const row = statusStats.find((r) => r.status === s);
+    return { count: Number(row?.count ?? 0), volume: Number(row?.volume ?? 0) };
+  }
+
+  const draft = getStatusStat("draft");
+  const review = getStatusStat("review");
+  const approved = getStatusStat("approved");
+  const sent = getStatusStat("sent");
+  const archived = getStatusStat("archived");
 
   // Escalation alerts: count deals with unresolved escalations
   const dealsWithEscalations = await db
@@ -92,48 +72,47 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
     .where(eq(escalations.resolved, false))
     .groupBy(escalations.dealId);
 
-  const totalVolume = Number(volumeResult.total);
-  const avgSavings = Number(savingsResult.avg);
+  const totalCount = draft.count + review.count + approved.count + sent.count + archived.count;
 
-  function formatVolume(v: number): string {
-    if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}B`;
-    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-    if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-    return String(v);
+  function fmtVol(v: number): string {
+    if (v >= 1_000_000_000) return `\u20AC${(v / 1_000_000_000).toFixed(1)}B`;
+    if (v >= 1_000_000) return `\u20AC${(v / 1_000_000).toFixed(1)}M`;
+    if (v >= 1_000) return `\u20AC${(v / 1_000).toFixed(0)}K`;
+    return `\u20AC${v}`;
   }
 
   const statCards = [
     {
-      label: "Total Deals",
-      value: String(Number(totalDeals.count)),
-      sub: `${Number(draftDeals.count)} draft`,
+      label: "Draft",
+      value: String(draft.count),
+      sub: fmtVol(draft.volume),
       icon: FileText,
-      color: "text-emerald-800",
-      bg: "bg-emerald-50",
+      color: "text-slate-600",
+      bg: "bg-slate-50",
     },
     {
       label: "In Review",
-      value: String(Number(reviewDeals.count)),
-      sub: `${Number(approvedDeals.count)} approved`,
+      value: String(review.count),
+      sub: fmtVol(review.volume),
       icon: Clock,
       color: "text-amber-600",
       bg: "bg-amber-50",
     },
     {
-      label: "Total Volume",
-      value: `\u20AC${formatVolume(totalVolume)}`,
-      sub: `${Number(sentDeals.count)} sent`,
-      icon: DollarSign,
+      label: "Approved",
+      value: String(approved.count),
+      sub: fmtVol(approved.volume),
+      icon: ShieldCheck,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
     },
     {
-      label: "Avg Savings",
-      value: `${avgSavings.toFixed(1)}%`,
-      sub: `${Number(archivedDeals.count)} archived`,
-      icon: TrendingDown,
-      color: "text-violet-600",
-      bg: "bg-violet-50",
+      label: "Sent",
+      value: String(sent.count),
+      sub: fmtVol(sent.volume),
+      icon: Send,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
     },
   ];
 
@@ -186,6 +165,16 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
             </div>
           );
         })}
+      </div>
+
+      {/* Pipeline summary */}
+      <div className="flex items-center gap-4 text-sm text-slate-500">
+        <span><span className="font-semibold text-slate-700">{totalCount}</span> total deals</span>
+        <span className="text-slate-300">|</span>
+        <span className="inline-flex items-center gap-1">
+          <Archive className="w-3.5 h-3.5" />
+          {archived.count} archived ({fmtVol(archived.volume)})
+        </span>
       </div>
 
       {/* Escalation alerts */}
