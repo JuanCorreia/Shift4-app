@@ -75,6 +75,7 @@ export default async function ProposalPage({ params }: ProposalPageProps) {
     currentMonthlyFee: deal.currentMonthlyFee,
     dccEligible: deal.dccEligible,
     narrative: deal.narrative,
+    marketContext: deal.marketContext,
     pricingResult,
   };
 

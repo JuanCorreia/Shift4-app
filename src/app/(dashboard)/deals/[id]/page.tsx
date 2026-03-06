@@ -455,17 +455,35 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
             );
           })()}
 
-          {/* Narrative */}
-          {deal.narrative && (
-            <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
-                AI Narrative
-              </h3>
-              <div className="prose prose-sm max-w-none text-gray-700">
-                {deal.narrative}
+          {/* Narratives */}
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {deal.narrative && (
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
+                    Proposal Narrative
+                  </h3>
+                </div>
+                <div className="prose prose-sm max-w-none text-gray-700">
+                  {deal.narrative}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            {deal.marketContext && (
+              <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">
+                    Market Context
+                  </h3>
+                </div>
+                <div className="prose prose-sm max-w-none text-gray-700">
+                  {deal.marketContext}
+                </div>
+              </div>
+            )}
+          </div>
         </>
       )}
 

@@ -98,6 +98,7 @@ export const deals = pgTable('deals', {
 
   // AI-generated content
   narrative: text('narrative'),
+  marketContext: text('market_context'),
 
   // Statement upload
   statementUrl: varchar('statement_url', { length: 500 }),

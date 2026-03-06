@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { FileText, FileDown, RefreshCw, Loader2, ArrowLeft } from 'lucide-react';
+import { FileText, FileDown, RefreshCw, Loader2, ArrowLeft, Globe } from 'lucide-react';
 import type { PricingResult } from '@/lib/pricing/types';
 import Link from 'next/link';
 
@@ -20,6 +20,7 @@ interface DealData {
   currentMonthlyFee?: string | null;
   dccEligible?: boolean | null;
   narrative?: string | null;
+  marketContext?: string | null;
   pricingResult: PricingResult;
 }
 
@@ -38,9 +39,11 @@ function formatEur(val: number): string {
 
 export default function ProposalPreview({ deal }: ProposalPreviewProps) {
   const [narrative, setNarrative] = useState(deal.narrative || '');
+  const [marketContext, setMarketContext] = useState(deal.marketContext || '');
   const [tone, setTone] = useState<string>('formal');
   const [template, setTemplate] = useState<string>('standard');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingMarket, setIsGeneratingMarket] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +76,28 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
       setIsGenerating(false);
     }
   }, [deal.id, tone]);
+
+  const handleGenerateMarket = useCallback(async () => {
+    setIsGeneratingMarket(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/ai/narrative', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: deal.id, type: 'market_context' }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to generate market context');
+      }
+      const data = await res.json();
+      setMarketContext(data.marketContext);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Generation failed');
+    } finally {
+      setIsGeneratingMarket(false);
+    }
+  }, [deal.id]);
 
   const handleExport = useCallback(async (format: 'pdf' | 'docx') => {
     const setLoading = format === 'pdf' ? setIsExportingPdf : setIsExportingDocx;
@@ -167,6 +192,18 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
             {narrative ? 'Regenerate Narrative' : 'Generate Narrative'}
           </button>
           <button
+            onClick={handleGenerateMarket}
+            disabled={isGeneratingMarket}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:opacity-50 transition-colors"
+          >
+            {isGeneratingMarket ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Globe className="w-4 h-4" />
+            )}
+            {marketContext ? 'Regenerate Market Context' : 'Generate Market Context'}
+          </button>
+          <button
             onClick={() => handleExport('pdf')}
             disabled={isExportingPdf || !narrative}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#395542] bg-white border border-[#395542] rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
@@ -235,6 +272,30 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
                 <FileText className="w-10 h-10 mx-auto mb-3 opacity-50" />
                 <p className="text-sm">No narrative generated yet.</p>
                 <p className="text-xs mt-1">Click &quot;Generate Narrative&quot; to create the executive summary.</p>
+              </div>
+            )}
+          </section>
+
+          {/* Market Context */}
+          <section>
+            <h2 className="text-lg font-bold text-[#395542] border-b-2 border-[#CF987E] pb-2 mb-4">
+              Market Context
+            </h2>
+            {marketContext ? (
+              <div className="space-y-2">
+                <textarea
+                  value={marketContext}
+                  onChange={(e) => setMarketContext(e.target.value)}
+                  rows={8}
+                  className="w-full text-sm text-gray-700 leading-relaxed border border-gray-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-y"
+                />
+                <p className="text-xs text-gray-400">Edit the market context above before exporting.</p>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-400">
+                <Globe className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No market context generated yet.</p>
+                <p className="text-xs mt-1">Click &quot;Generate Market Context&quot; to create the market analysis.</p>
               </div>
             )}
           </section>

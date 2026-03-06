@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 import { deals } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { partnerFilter } from '@/lib/db/helpers';
-import { generateNarrative, dealToNarrativeInput } from '@/lib/ai/narrative';
+import { generateNarrative, generateMarketContext, dealToNarrativeInput } from '@/lib/ai/narrative';
 import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { dealId, tone } = body;
+    const { dealId, tone, type } = body;
 
     if (!dealId || typeof dealId !== 'string') {
       return NextResponse.json({ error: 'dealId is required' }, { status: 400 });
@@ -41,6 +41,19 @@ export async function POST(request: NextRequest) {
     }
 
     const input = dealToNarrativeInput(deal);
+
+    if (type === 'market_context') {
+      const marketContext = await generateMarketContext(input, session.partnerId ?? undefined);
+
+      await db
+        .update(deals)
+        .set({ marketContext, updatedAt: new Date() })
+        .where(eq(deals.id, dealId));
+
+      return NextResponse.json({ marketContext });
+    }
+
+    // Default: proposal narrative
     const narrative = await generateNarrative(input, session.partnerId ?? undefined, tone);
 
     await db
