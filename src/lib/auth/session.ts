@@ -11,6 +11,19 @@ function getJwtSecret(): string {
 const COOKIE_NAME = "shift4_session";
 const SEVEN_DAYS = 60 * 60 * 24 * 7;
 
+export const SESSION_COOKIE = COOKIE_NAME;
+
+/** Cookie attributes shared by every place that sets the session cookie. */
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    maxAge: SEVEN_DAYS,
+    path: "/",
+  };
+}
+
 export interface SessionPayload {
   userId: string;
   email: string;
@@ -36,13 +49,7 @@ export async function createSession(payload: SessionPayload): Promise<string> {
   const token = createToken(payload);
   const cookieStore = await cookies();
 
-  cookieStore.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: SEVEN_DAYS,
-    path: "/",
-  });
+  cookieStore.set(COOKIE_NAME, token, sessionCookieOptions());
 
   return token;
 }

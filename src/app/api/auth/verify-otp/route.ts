@@ -2,25 +2,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users, partners, loginAttempts } from "@/lib/db/schema";
-import { createSession } from "@/lib/auth/session";
+import { createToken, SESSION_COOKIE, sessionCookieOptions } from "@/lib/auth/session";
 import { verifyOtp } from "@/lib/auth/otp";
 import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request-ip";
 
+/**
+ * Step 2 of login: verify the e-mailed one-time code. This is the ONLY place
+ * a session cookie is issued.
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, code } = body;
 
-    if (!email || !code) {
+    if (typeof email !== "string" || typeof code !== "string" || !email || !code) {
       return NextResponse.json(
         { error: "Email and verification code are required" },
         { status: 400 }
       );
     }
 
-    // Rate limit OTP verification: 5 attempts per minute per email
-    const { success: rateLimitOk } = rateLimit(`otp:${email}`, 5, 60000);
-    if (!rateLimitOk) {
+    const ip = getClientIp(request);
+    const userAgent = request.headers.get("user-agent") || undefined;
+
+    // Rate limit OTP verification: 5 attempts per minute per e-mail and per IP
+    const { success: emailLimitOk } = rateLimit(`otp:${email}`, 5, 60000);
+    const { success: ipLimitOk } = rateLimit(`otp-ip:${ip}`, 20, 60000);
+    if (!emailLimitOk || !ipLimitOk) {
       return NextResponse.json(
         { error: "Too many attempts. Try again in a minute." },
         { status: 429 }
@@ -30,6 +39,7 @@ export async function POST(request: NextRequest) {
     const { valid, userId } = await verifyOtp(email, code.trim());
 
     if (!valid || !userId) {
+      await db.insert(loginAttempts).values({ email, ip, userAgent, success: false });
       return NextResponse.json(
         { error: "Invalid or expired verification code" },
         { status: 401 }
@@ -59,8 +69,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Log successful login (after OTP verified)
-    const ip = request.headers.get("x-forwarded-for") || "unknown";
-    const userAgent = request.headers.get("user-agent") || undefined;
     await db.insert(loginAttempts).values({
       email: user.email,
       ip,
@@ -79,8 +87,9 @@ export async function POST(request: NextRequest) {
       partnerName = partner?.name;
     }
 
-    // Create session
-    await createSession({
+    // Create session token and set cookie on the response object
+    // (cookies().set() from next/headers does not propagate in route handlers).
+    const token = createToken({
       userId: user.id,
       email: user.email,
       name: user.name,
@@ -89,10 +98,14 @@ export async function POST(request: NextRequest) {
       partnerName,
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
     });
+
+    response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+
+    return response;
   } catch (error) {
     console.error("OTP verification error:", error);
     return NextResponse.json(

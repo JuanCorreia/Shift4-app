@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq, and, gt, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
-import { users, teamSettings, partners, loginAttempts } from "@/lib/db/schema";
+import { users, teamSettings, loginAttempts } from "@/lib/db/schema";
 import { loginSchema } from "@/lib/validators/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { createToken } from "@/lib/auth/session";
+import { createOtp } from "@/lib/auth/otp";
+import { sendOtpEmail } from "@/lib/email";
+import { getClientIp } from "@/lib/request-ip";
 
+const LOCKOUT_WINDOW_MS = 30 * 60 * 1000;
+const LOCKOUT_THRESHOLD = 10;
+
+/**
+ * Step 1 of login: validate the team invite code, then send a one-time code
+ * to the supplied e-mail address. No session is issued here — the session
+ * cookie is only set by /api/auth/verify-otp once the e-mail OTP is verified,
+ * so the invite code alone can never impersonate an existing account.
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -21,11 +32,11 @@ export async function POST(request: NextRequest) {
 
     const { inviteCode, name, email } = parsed.data;
 
-    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const ip = getClientIp(request);
     const userAgent = request.headers.get("user-agent") || undefined;
 
     // Rate limit: 5 attempts per minute per IP
-    const { success: rateLimitOk } = rateLimit(ip, 5, 60000);
+    const { success: rateLimitOk } = rateLimit(`login:${ip}`, 5, 60000);
     if (!rateLimitOk) {
       return NextResponse.json(
         { error: "Too many login attempts. Try again in a minute." },
@@ -33,37 +44,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check lockout: 10 failed attempts in last 30 minutes
-    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
-    const [failedCount] = await db
+    // Lockout: 10 failed attempts in the last 30 minutes, keyed on the e-mail
+    // AND on the client IP (so rotating e-mails does not bypass the lockout).
+    const windowStart = new Date(Date.now() - LOCKOUT_WINDOW_MS);
+    const [failedByEmail] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(loginAttempts)
       .where(
         and(
           eq(loginAttempts.email, email),
           eq(loginAttempts.success, false),
-          gt(loginAttempts.createdAt, thirtyMinAgo)
+          gt(loginAttempts.createdAt, windowStart)
+        )
+      );
+    const [failedByIp] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(loginAttempts)
+      .where(
+        and(
+          eq(loginAttempts.ip, ip),
+          eq(loginAttempts.success, false),
+          gt(loginAttempts.createdAt, windowStart)
         )
       );
 
-    if (failedCount && failedCount.count >= 10) {
+    if (
+      (failedByEmail && failedByEmail.count >= LOCKOUT_THRESHOLD) ||
+      (ip !== "unknown" && failedByIp && failedByIp.count >= LOCKOUT_THRESHOLD)
+    ) {
       return NextResponse.json(
-        { error: "Account temporarily locked due to too many failed attempts. Try again in 30 minutes." },
+        { error: "Too many failed attempts. Try again in 30 minutes." },
         { status: 429 }
       );
     }
 
-    // Validate invite code — fetch all team settings and compare with bcrypt
+    // Validate invite code — compare against every team's bcrypt hash.
     const allTeams = await db.select().from(teamSettings);
 
     let matchedTeam = null;
     for (const team of allTeams) {
       const isHashed = team.inviteCode.startsWith("$2");
-      const isMatch = isHashed
-        ? await bcrypt.compare(inviteCode, team.inviteCode)
-        : inviteCode === team.inviteCode;
 
-      if (isMatch) {
+      if (isHashed) {
+        if (await bcrypt.compare(inviteCode, team.inviteCode)) {
+          matchedTeam = team;
+          break;
+        }
+        continue;
+      }
+
+      // Legacy plaintext row: accept once, then hash it in place so the
+      // plaintext code is no longer stored at rest.
+      if (inviteCode === team.inviteCode) {
+        const hashed = await bcrypt.hash(inviteCode, 10);
+        await db
+          .update(teamSettings)
+          .set({ inviteCode: hashed, updatedAt: new Date() })
+          .where(eq(teamSettings.id, team.id));
+        console.warn(`Upgraded plaintext invite code to bcrypt for team ${team.id}`);
         matchedTeam = team;
         break;
       }
@@ -121,49 +159,36 @@ export async function POST(request: NextRequest) {
       user = created[0];
     }
 
-    // Log successful login
-    await db.insert(loginAttempts).values({
-      email: user.email,
-      ip,
-      userAgent,
-      success: true,
-    });
-
-    // Resolve partner name
-    let partnerName: string | undefined;
-    if (user.partnerId) {
-      const [partner] = await db
-        .select({ name: partners.name })
-        .from(partners)
-        .where(eq(partners.id, user.partnerId))
-        .limit(1);
-      partnerName = partner?.name;
+    // Per-e-mail throttle on OTP issuance (3 codes per 10 minutes)
+    const { success: otpIssueOk } = rateLimit(`otp-issue:${user.email}`, 3, 10 * 60 * 1000);
+    if (!otpIssueOk) {
+      return NextResponse.json(
+        { error: "A code was already sent. Please wait a few minutes before requesting another." },
+        { status: 429 }
+      );
     }
 
-    // Create session token and set cookie on response
-    const token = createToken({
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      partnerId: user.partnerId,
-      partnerName,
-    });
+    // Generate OTP and send via e-mail. Success is logged in verify-otp.
+    const otpCode = await createOtp(user.id, user.email);
+    try {
+      await sendOtpEmail(user.email, otpCode, user.name);
+    } catch (emailErr) {
+      console.error("Failed to send OTP email:", emailErr);
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json(
+          { error: "Unable to send verification code. Please try again later or contact your administrator." },
+          { status: 503 }
+        );
+      }
+      // Local development without SMTP: surface the code in the server log only.
+      console.log(`[DEV] OTP code for ${user.email}: ${otpCode}`);
+    }
 
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      requireOtp: true,
+      email: user.email,
     });
-
-    response.cookies.set("shift4_session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-      path: "/",
-    });
-
-    return response;
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
