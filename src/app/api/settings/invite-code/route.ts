@@ -26,9 +26,9 @@ export async function PATCH(request: NextRequest) {
         { status: 400 }
       );
     }
-    if (inviteCode.trim().length < 12 || inviteCode.length > 128) {
+    if (inviteCode.trim().length < 16 || inviteCode.length > 128) {
       return NextResponse.json(
-        { error: "Invite code must be between 12 and 128 characters" },
+        { error: "Invite code must be between 16 and 128 characters" },
         { status: 400 }
       );
     }

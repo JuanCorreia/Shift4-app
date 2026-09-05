@@ -88,7 +88,7 @@ docker compose exec -e SEED_ADMIN_EMAIL=... -e SEED_INVITE_CODE=... db sh /docke
 
 The app uses a shared team invite code plus e-mail verification (no per-user passwords):
 
-1. An admin sets the team invite code in Settings (minimum 12 characters; stored bcrypt-hashed)
+1. An admin sets the team invite code in Settings (minimum 16 characters; stored bcrypt-hashed)
 2. New users enter the invite code + their name/email
 3. A 6-digit one-time code is e-mailed to that address and must be entered to sign in — the invite code alone never grants a session
 4. Users receive a JWT session (7-day expiry); deactivated users lose access immediately

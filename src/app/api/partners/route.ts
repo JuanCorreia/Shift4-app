@@ -71,11 +71,11 @@ export async function POST(request: NextRequest) {
       .returning();
 
     // Create team_settings for the new partner with hashed invite code.
-    // Auto-generated codes come from a CSPRNG (96 bits); supplied codes must be >= 12 chars.
+    // Auto-generated codes come from a CSPRNG (96 bits); supplied codes must be >= 16 chars.
     if (inviteCode !== undefined && inviteCode !== null && inviteCode !== "") {
-      if (typeof inviteCode !== "string" || inviteCode.length < 12 || inviteCode.length > 128) {
+      if (typeof inviteCode !== "string" || inviteCode.length < 16 || inviteCode.length > 128) {
         return NextResponse.json(
-          { error: "Invite code must be between 12 and 128 characters" },
+          { error: "Invite code must be between 16 and 128 characters" },
           { status: 400 }
         );
       }

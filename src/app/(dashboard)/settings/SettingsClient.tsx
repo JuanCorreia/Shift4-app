@@ -247,7 +247,7 @@ export default function SettingsClient({
               Team Invite Code
             </h2>
             <p className="text-sm text-slate-500">
-              Share this code with new team members. {initialInviteCodeSet ? "A code is set; enter a new one to replace it." : "No code set yet."} Minimum 12 characters.
+              Share this code with new team members. {initialInviteCodeSet ? "A code is set; enter a new one to replace it." : "No code set yet."} Minimum 16 characters.
             </p>
           </div>
         </div>
@@ -258,7 +258,7 @@ export default function SettingsClient({
             onChange={(e) => setInviteCode(e.target.value)}
             className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
             placeholder={initialInviteCodeSet ? "Enter a new invite code to replace the current one" : "Enter invite code"}
-            minLength={12}
+            minLength={16}
             autoComplete="off"
           />
           <button
