@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { partners, teamSettings } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "crypto";
 
 export async function GET() {
   try {
@@ -69,8 +70,17 @@ export async function POST(request: NextRequest) {
       .values({ name, slug, logoUrl: logoUrl || null })
       .returning();
 
-    // Create team_settings for the new partner with hashed invite code
-    const plainCode = inviteCode || `${slug}-${Math.random().toString(36).slice(2, 8)}`;
+    // Create team_settings for the new partner with hashed invite code.
+    // Auto-generated codes come from a CSPRNG (96 bits); supplied codes must be >= 12 chars.
+    if (inviteCode !== undefined && inviteCode !== null && inviteCode !== "") {
+      if (typeof inviteCode !== "string" || inviteCode.length < 12 || inviteCode.length > 128) {
+        return NextResponse.json(
+          { error: "Invite code must be between 12 and 128 characters" },
+          { status: 400 }
+        );
+      }
+    }
+    const plainCode = inviteCode || `${slug}-${randomBytes(12).toString("base64url")}`;
     const hashedCode = await bcrypt.hash(plainCode, 10);
     await db.insert(teamSettings).values({
       partnerId: partner.id,

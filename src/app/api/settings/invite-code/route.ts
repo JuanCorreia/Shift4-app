@@ -5,6 +5,7 @@ import { teamSettings } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 import bcrypt from "bcryptjs";
 import { logAuditEvent } from "@/lib/audit";
+import { getClientIp } from "@/lib/request-ip";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -22,6 +23,12 @@ export async function PATCH(request: NextRequest) {
     if (!inviteCode || typeof inviteCode !== "string") {
       return NextResponse.json(
         { error: "Invite code is required" },
+        { status: 400 }
+      );
+    }
+    if (inviteCode.trim().length < 12 || inviteCode.length > 128) {
+      return NextResponse.json(
+        { error: "Invite code must be between 12 and 128 characters" },
         { status: 400 }
       );
     }
@@ -43,7 +50,7 @@ export async function PATCH(request: NextRequest) {
         : and(eq(teamSettings.id, teamId), eq(teamSettings.partnerId, session.partnerId!));
 
     // Hash invite code before storing
-    const hashedCode = await bcrypt.hash(inviteCode, 10);
+    const hashedCode = await bcrypt.hash(inviteCode.trim(), 10);
 
     await db
       .update(teamSettings)
@@ -55,7 +62,7 @@ export async function PATCH(request: NextRequest) {
       action: "invite_code_updated",
       resource: "team_settings",
       resourceId: teamId,
-      ip: request.headers.get("x-forwarded-for") || undefined,
+      ip: getClientIp(request),
     });
 
     return NextResponse.json({ success: true });

@@ -16,10 +16,12 @@ function getTierLabel(volume: string): string {
 }
 
 function escapeCsv(val: string): string {
-  if (val.includes(",") || val.includes('"') || val.includes("\n")) {
-    return `"${val.replace(/"/g, '""')}"`;
+  // Neutralise spreadsheet formula injection (=, +, -, @, tab, CR at cell start)
+  let cell = /^[=+\-@\t\r]/.test(val) ? `'${val}` : val;
+  if (cell.includes(",") || cell.includes('"') || cell.includes("\n") || cell.includes("\r")) {
+    cell = `"${cell.replace(/"/g, '""')}"`;
   }
-  return val;
+  return cell;
 }
 
 export async function GET(request: NextRequest) {

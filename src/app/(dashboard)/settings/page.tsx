@@ -57,7 +57,7 @@ export default async function SettingsPage() {
 
       <SettingsClient
         initialUsers={allUsers}
-        initialInviteCode={team?.inviteCode ?? ""}
+        initialInviteCodeSet={!!team?.inviteCode}
         initialApiKeySet={!!team?.anthropicApiKey}
         teamId={team?.id ?? null}
       />

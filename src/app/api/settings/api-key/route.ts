@@ -5,6 +5,7 @@ import { teamSettings } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 import { encrypt } from "@/lib/crypto";
 import { logAuditEvent } from "@/lib/audit";
+import { getClientIp } from "@/lib/request-ip";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -70,7 +71,7 @@ export async function PATCH(request: NextRequest) {
       action: apiKey ? "api_key_updated" : "api_key_removed",
       resource: "team_settings",
       resourceId: teamId,
-      ip: request.headers.get("x-forwarded-for") || undefined,
+      ip: getClientIp(request),
     });
 
     return NextResponse.json({ success: true });

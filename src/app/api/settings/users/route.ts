@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
 import { logAuditEvent } from "@/lib/audit";
+import { getClientIp } from "@/lib/request-ip";
 
 const VALID_ROLES = ["analyst", "admin", "viewer"] as const;
 
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
       resource: "users",
       resourceId: created.id,
       details: { name: created.name, email: created.email, role: created.role },
-      ip: request.headers.get("x-forwarded-for") || undefined,
+      ip: getClientIp(request),
     });
 
     return NextResponse.json({ success: true, user: created });
