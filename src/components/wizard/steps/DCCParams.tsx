@@ -1,6 +1,7 @@
 'use client';
 
 import { Globe, Info } from 'lucide-react';
+import { formatEur } from '@/lib/utils';
 
 export interface DCCParamsData {
   dccEligible: boolean;
@@ -17,12 +18,7 @@ interface DCCParamsProps {
 }
 
 function fmt(value: number): string {
-  return new Intl.NumberFormat('en-IE', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatEur(value);
 }
 
 export default function DCCParams({ data, onChange }: DCCParamsProps) {

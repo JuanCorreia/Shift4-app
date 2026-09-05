@@ -117,7 +117,7 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
                   )}
                 </div>
                 <span
-                  className={`mt-2 text-xs font-medium ${
+                  className={`mt-2 text-xs font-medium ${isCurrent ? '' : 'hidden sm:block'} ${
                     isCurrent ? 'text-emerald-800' : isComplete ? 'text-green-600' : 'text-gray-400'
                   }`}
                 >
@@ -126,7 +126,7 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
               </div>
 
               {i < mainFlow.length - 1 && (
-                <div className="flex-1 mx-3 mt-[-1.25rem]">
+                <div className="flex-1 mx-1.5 sm:mx-3 mt-[-1.25rem]">
                   <div
                     className={`h-0.5 ${
                       stepIdx < currentIdx ? 'bg-green-500' : 'bg-gray-200'

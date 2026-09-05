@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { deals, escalations } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { partnerFilter } from "@/lib/db/helpers";
+import { formatEur } from "@/lib/utils";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Building2, MapPin, Star, CreditCard, TrendingUp, History, AlertTriangle, FileText, ExternalLink, GitCompare, Pencil } from "lucide-react";
@@ -20,12 +21,7 @@ interface DealDetailPageProps {
 
 function formatCurrency(value: string | null) {
   if (!value) return "--";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(Number(value));
+  return formatEur(value);
 }
 
 function formatPercent(value: string | null) {

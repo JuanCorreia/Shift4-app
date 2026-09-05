@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { FileText, FileDown, RefreshCw, Loader2, ArrowLeft, Globe } from 'lucide-react';
 import type { PricingResult } from '@/lib/pricing/types';
 import Link from 'next/link';
+import { formatEur } from '@/lib/utils';
 
 interface DealData {
   id: string;
@@ -26,15 +27,6 @@ interface DealData {
 
 interface ProposalPreviewProps {
   deal: DealData;
-}
-
-function formatEur(val: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(val);
 }
 
 export default function ProposalPreview({ deal }: ProposalPreviewProps) {
@@ -182,7 +174,7 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
           <button
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#395542] rounded-lg hover:bg-[#162d4a] disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#395542] rounded-lg hover:bg-[#4a6b55] disabled:opacity-50 transition-colors"
           >
             {isGenerating ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -339,18 +331,18 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
                   </tr>
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <td className="px-4 py-2.5 font-medium">Transaction Fee</td>
-                    <td className="px-4 py-2.5">{deal.currentTxFee ? `EUR ${Number(deal.currentTxFee)}` : '--'}</td>
-                    <td className="px-4 py-2.5">EUR {pricing.proposedTxFee}</td>
+                    <td className="px-4 py-2.5">{deal.currentTxFee ? formatEur(deal.currentTxFee, 2) : '--'}</td>
+                    <td className="px-4 py-2.5">{formatEur(pricing.proposedTxFee, 2)}</td>
                     <td className="px-4 py-2.5">
-                      {deal.currentTxFee ? `EUR ${(Number(deal.currentTxFee) - pricing.proposedTxFee).toFixed(4)}` : '--'}
+                      {deal.currentTxFee ? formatEur(Number(deal.currentTxFee) - pricing.proposedTxFee, 2) : '--'}
                     </td>
                   </tr>
                   <tr className="border-b border-gray-100">
                     <td className="px-4 py-2.5 font-medium">Monthly Fee</td>
-                    <td className="px-4 py-2.5">{deal.currentMonthlyFee ? `EUR ${Number(deal.currentMonthlyFee)}` : '--'}</td>
-                    <td className="px-4 py-2.5">EUR {pricing.proposedMonthlyFee}</td>
+                    <td className="px-4 py-2.5">{deal.currentMonthlyFee ? formatEur(deal.currentMonthlyFee) : '--'}</td>
+                    <td className="px-4 py-2.5">{formatEur(pricing.proposedMonthlyFee)}</td>
                     <td className="px-4 py-2.5">
-                      {deal.currentMonthlyFee ? `EUR ${(Number(deal.currentMonthlyFee) - pricing.proposedMonthlyFee).toFixed(0)}` : '--'}
+                      {deal.currentMonthlyFee ? formatEur(Number(deal.currentMonthlyFee) - pricing.proposedMonthlyFee) : '--'}
                     </td>
                   </tr>
                   <tr className="bg-gray-50">
@@ -382,8 +374,8 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
                     ['Pricing Tier', `${pricing.tierName} (Tier ${pricing.tier})`],
                     ['Base Rate', `${pricing.baseRate} bps`],
                     ['Adjusted Rate', `${pricing.adjustedRate} bps`],
-                    ['Transaction Fee', `EUR ${pricing.proposedTxFee}`],
-                    ['Monthly Fee', `EUR ${pricing.proposedMonthlyFee}`],
+                    ['Transaction Fee', formatEur(pricing.proposedTxFee, 2)],
+                    ['Monthly Fee', formatEur(pricing.proposedMonthlyFee)],
                     ['Annual Volume', formatEur(Number(deal.annualVolume))],
                   ].map(([label, value], i) => (
                     <tr key={label} className={`border-b border-gray-100 ${i % 2 === 1 ? 'bg-gray-50' : ''}`}>
