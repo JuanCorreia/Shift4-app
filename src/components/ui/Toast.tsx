@@ -59,7 +59,7 @@ export function Toast({ toast, onRemove }: ToastProps) {
   return (
     <div
       className={cn(
-        'flex items-start gap-3 w-80 p-4 rounded-lg border shadow-lg transition-all duration-300',
+        'flex items-start gap-3 w-full sm:w-80 p-4 rounded-lg border shadow-lg transition-all duration-300',
         styleMap[toast.type],
         visible
           ? 'translate-x-0 opacity-100'

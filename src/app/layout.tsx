@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -12,12 +12,18 @@ export const metadata: Metadata = {
   description:
     "Payment processing deal analysis and proposal generation for hospitality.",
   manifest: "/manifest.json",
-  themeColor: "#395542",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Banyan",
   },
+  icons: {
+    apple: "/icons/icon-192.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#395542",
 };
 
 export default function RootLayout({
@@ -27,10 +33,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-      </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         {children}
       </body>

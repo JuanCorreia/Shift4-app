@@ -128,7 +128,7 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
   return (
     <div className="space-y-6">
       {/* Template selector */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { slug: 'standard', name: 'Standard', desc: 'Banyan green + terracotta', color: '#395542', accent: '#CF987E' },
           { slug: 'premium', name: 'Premium', desc: 'Dark navy + gold', color: '#1a1a2e', accent: '#c4a265' },
@@ -161,7 +161,7 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <Link
           href={`/deals/${deal.id}`}
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
@@ -169,7 +169,7 @@ export default function ProposalPreview({ deal }: ProposalPreviewProps) {
           <ArrowLeft className="w-4 h-4" />
           Back to Deal
         </Link>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={tone}
             onChange={(e) => setTone(e.target.value)}

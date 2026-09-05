@@ -91,7 +91,7 @@ export default function DealFilters() {
   return (
     <div className="space-y-4">
       {/* Status tabs */}
-      <div className="flex items-center gap-1 border-b border-slate-200">
+      <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.key}

@@ -36,24 +36,14 @@
   }
 }
 
-/* Touch-friendly tap targets on mobile */
+/* Touch-friendly tap targets on mobile.
+   Scoped to text-entry controls only: buttons/links keep their own padding,
+   and range/number/checkbox inputs plus icon buttons keep their compact size. */
 @media (pointer: coarse) {
-  button,
-  a,
-  [role="button"],
-  input,
+  input:not([type="range"]):not([type="number"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
   select,
   textarea {
     min-height: 44px;
-    min-width: 44px;
-  }
-
-  /* Smaller elements that still need to be tappable */
-  .text-xs button,
-  nav a {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
   }
 }
 

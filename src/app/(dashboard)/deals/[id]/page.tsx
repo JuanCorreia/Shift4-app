@@ -77,8 +77,8 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900 break-words">
                 {deal.merchantName}
               </h1>
               <StatusBadge status={deal.status} />
@@ -99,8 +99,8 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
       />
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex gap-6">
+      <div className="border-b border-gray-200 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
+        <nav className="flex gap-6 whitespace-nowrap min-w-max">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
