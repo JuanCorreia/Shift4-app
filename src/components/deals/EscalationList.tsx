@@ -26,11 +26,14 @@ interface EscalationRecord {
 interface EscalationListProps {
   dealId: string;
   userId: string;
+  /** Only admins may resolve escalations (enforced server-side too). */
+  canResolve?: boolean;
 }
 
-export default function EscalationList({ dealId, userId }: EscalationListProps) {
+export default function EscalationList({ dealId, userId, canResolve = false }: EscalationListProps) {
   const [escalations, setEscalations] = useState<EscalationRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [resolvingId, setResolvingId] = useState<string | null>(null);
 
@@ -40,12 +43,17 @@ export default function EscalationList({ dealId, userId }: EscalationListProps) 
   }, [dealId]);
 
   async function fetchEscalations() {
+    setError(null);
     try {
       const res = await fetch(`/api/deals/${dealId}/escalations`);
       if (res.ok) {
         const data = await res.json();
         setEscalations(data);
+      } else {
+        setError('Could not load escalations.');
       }
+    } catch {
+      setError('Could not load escalations.');
     } finally {
       setLoading(false);
     }
@@ -67,7 +75,12 @@ export default function EscalationList({ dealId, userId }: EscalationListProps) 
               : e
           )
         );
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || 'Could not resolve escalation.');
       }
+    } catch {
+      setError('Could not resolve escalation.');
     } finally {
       setResolvingId(null);
     }
@@ -116,6 +129,13 @@ export default function EscalationList({ dealId, userId }: EscalationListProps) 
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <span>{error}</span>
+          <button type="button" onClick={fetchEscalations} className="font-medium underline">Retry</button>
+        </div>
+      )}
+
       {/* Unresolved count */}
       {unresolved.length > 0 && (
         <div className="flex items-center gap-2">
@@ -135,7 +155,7 @@ export default function EscalationList({ dealId, userId }: EscalationListProps) 
               escalation={esc}
               expanded={expandedIds.has(esc.id)}
               onToggle={() => toggleExpand(esc.id)}
-              onResolve={() => handleResolve(esc.id)}
+              onResolve={canResolve ? () => handleResolve(esc.id) : undefined}
               resolving={resolvingId === esc.id}
             />
           ))}
@@ -251,6 +271,8 @@ function EscalationItem({
             <button
               onClick={onToggle}
               className={`p-1 rounded ${resolved ? 'text-gray-400' : iconColor}`}
+              aria-label={expanded ? 'Hide details' : 'Show details'}
+              aria-expanded={expanded}
             >
               {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>

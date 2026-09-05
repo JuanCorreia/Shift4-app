@@ -205,6 +205,7 @@ export default function PartnersClient({ partners }: PartnersClientProps) {
                   onClick={() => copyInviteCode(partner.inviteCode!, partner.id)}
                   className="text-slate-400 hover:text-slate-600 transition-colors"
                   title="Copy invite code"
+                  aria-label="Copy invite code"
                 >
                   {copiedId === partner.id ? (
                     <Check className="h-3.5 w-3.5 text-green-600" />

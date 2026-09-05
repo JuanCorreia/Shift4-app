@@ -21,9 +21,9 @@ export default function ReportsPage() {
 
   useEffect(() => {
     fetch("/api/reports")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        setData(d);
+        setData(d && typeof d === "object" && !("error" in d) ? d : null);
         setLoading(false);
       })
       .catch(() => setLoading(false));

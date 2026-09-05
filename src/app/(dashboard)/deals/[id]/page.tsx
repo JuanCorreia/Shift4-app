@@ -8,7 +8,7 @@ import { ArrowLeft, Building2, MapPin, Star, CreditCard, TrendingUp, History, Al
 import PriceHistoryTab from "@/components/deals/PriceHistoryTab";
 import { StatusBadge } from "@/components/deals/StatusBadge";
 import { getSession } from "@/lib/auth/session";
-import { canEditDeals } from "@/lib/auth/permissions";
+import { canEditDeals, isAdmin } from "@/lib/auth/permissions";
 import StatusWorkflow from "@/components/deals/StatusWorkflow";
 import DealHistory from "@/components/deals/DealHistory";
 import EscalationList from "@/components/deals/EscalationList";
@@ -510,7 +510,7 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
 
       {activeTab === 'escalations' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <EscalationList dealId={id} userId={session.userId} />
+          <EscalationList dealId={id} userId={session.userId} canResolve={isAdmin(session)} />
         </div>
       )}
 

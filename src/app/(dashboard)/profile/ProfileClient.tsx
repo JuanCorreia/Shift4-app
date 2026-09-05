@@ -16,7 +16,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
   const [email, setEmail] = useState(user.email);
   const [emailNotifications, setEmailNotifications] = useState(user.emailNotifications);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const roleLabel = ROLES[user.role as keyof typeof ROLES] ?? user.role;
   const joinedDate = new Date(user.createdAt).toLocaleDateString("en-GB", {
@@ -27,7 +27,7 @@ export default function ProfileClient({ user }: ProfileClientProps) {
 
   async function handleSave() {
     setSaving(true);
-    setMessage("");
+    setMessage(null);
     try {
       const res = await fetch("/api/profile", {
         method: "PATCH",
@@ -35,14 +35,14 @@ export default function ProfileClient({ user }: ProfileClientProps) {
         body: JSON.stringify({ name, email, emailNotifications }),
       });
       if (res.ok) {
-        setMessage("Profile updated.");
+        setMessage({ type: "success", text: "Profile updated." });
         router.refresh();
       } else {
         const data = await res.json();
-        setMessage(data.error || "Failed to save.");
+        setMessage({ type: "error", text: data.error || "Failed to save." });
       }
     } catch {
-      setMessage("Network error.");
+      setMessage({ type: "error", text: "Network error." });
     } finally {
       setSaving(false);
     }
@@ -134,8 +134,8 @@ export default function ProfileClient({ user }: ProfileClientProps) {
               {saving ? "Saving..." : "Save Changes"}
             </button>
             {message && (
-              <p className={`text-sm ${message.includes("error") || message.includes("Failed") ? "text-red-500" : "text-emerald-600"}`}>
-                {message}
+              <p className={`text-sm ${message.type === "error" ? "text-red-500" : "text-emerald-600"}`}>
+                {message.text}
               </p>
             )}
           </div>

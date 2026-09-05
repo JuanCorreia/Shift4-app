@@ -155,6 +155,8 @@ export default function WizardShell({ dealId, initialData }: WizardShellProps = 
               type="button"
               onClick={() => goToStep(i)}
               className="flex flex-col items-center gap-1.5 group"
+              aria-label={`Step ${i + 1}: ${s.label}`}
+              aria-current={i === step ? 'step' : undefined}
             >
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${

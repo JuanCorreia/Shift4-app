@@ -74,6 +74,7 @@ export function Toast({ toast, onRemove }: ToastProps) {
           setTimeout(() => onRemove(toast.id), 300);
         }}
         className="flex-shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
+        aria-label="Dismiss notification"
       >
         <X className="h-4 w-4" />
       </button>

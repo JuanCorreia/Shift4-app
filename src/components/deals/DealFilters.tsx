@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, Download, FileText } from 'lucide-react';
 import { useState, useCallback } from 'react';
+import { useToast } from '@/components/ui/ToastProvider';
 
 const STATUS_TABS = [
   { key: 'all', label: 'All' },
@@ -32,6 +33,7 @@ export default function DealFilters() {
 
   const [searchValue, setSearchValue] = useState(currentSearch);
   const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null);
+  const { addToast } = useToast();
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -72,7 +74,7 @@ export default function DealFilters() {
       const res = await fetch(url);
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Export failed' }));
-        alert(data.error || 'Export failed');
+        addToast('error', data.error || 'Export failed');
         return;
       }
       const blob = await res.blob();
@@ -82,7 +84,7 @@ export default function DealFilters() {
       a.click();
       URL.revokeObjectURL(a.href);
     } catch {
-      alert('Export failed. Please try again.');
+      addToast('error', 'Export failed. Please try again.');
     } finally {
       setExporting(null);
     }

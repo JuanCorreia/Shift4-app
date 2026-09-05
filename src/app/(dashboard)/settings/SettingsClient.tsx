@@ -16,6 +16,9 @@ import {
   Power,
 } from "lucide-react";
 import type { User } from "@/lib/db/schema";
+import { useToast } from "@/components/ui/ToastProvider";
+
+type Feedback = { type: "success" | "error"; text: string } | null;
 
 interface SettingsClientProps {
   initialUsers: User[];
@@ -61,13 +64,14 @@ export default function SettingsClient({
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [savingApiKey, setSavingApiKey] = useState(false);
-  const [apiKeyMessage, setApiKeyMessage] = useState("");
+  const [apiKeyMessage, setApiKeyMessage] = useState<Feedback>(null);
   const [userList, setUserList] = useState<User[]>(initialUsers);
   const [userRoles, setUserRoles] = useState<Record<string, string>>(
     Object.fromEntries(initialUsers.map((u) => [u.id, u.role]))
   );
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<Feedback>(null);
+  const { addToast } = useToast();
 
   // Create user modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -88,7 +92,7 @@ export default function SettingsClient({
 
   async function handleSaveInviteCode() {
     setSaving(true);
-    setMessage("");
+    setMessage(null);
     try {
       const res = await fetch("/api/settings/invite-code", {
         method: "PATCH",
@@ -96,13 +100,14 @@ export default function SettingsClient({
         body: JSON.stringify({ inviteCode, teamId }),
       });
       if (res.ok) {
-        setMessage("Invite code updated.");
+        setMessage({ type: "success", text: "Invite code updated." });
+        setInviteCode("");
       } else {
         const data = await res.json();
-        setMessage(data.error || "Failed to save.");
+        setMessage({ type: "error", text: data.error || "Failed to save." });
       }
     } catch {
-      setMessage("Network error.");
+      setMessage({ type: "error", text: "Network error." });
     } finally {
       setSaving(false);
     }
@@ -110,7 +115,7 @@ export default function SettingsClient({
 
   async function handleSaveApiKey() {
     setSavingApiKey(true);
-    setApiKeyMessage("");
+    setApiKeyMessage(null);
     try {
       const res = await fetch("/api/settings/api-key", {
         method: "PATCH",
@@ -118,13 +123,13 @@ export default function SettingsClient({
         body: JSON.stringify({ apiKey, teamId }),
       });
       if (res.ok) {
-        setApiKeyMessage("API key updated.");
+        setApiKeyMessage({ type: "success", text: "API key updated." });
       } else {
         const data = await res.json();
-        setApiKeyMessage(data.error || "Failed to save.");
+        setApiKeyMessage({ type: "error", text: data.error || "Failed to save." });
       }
     } catch {
-      setApiKeyMessage("Network error.");
+      setApiKeyMessage({ type: "error", text: "Network error." });
     } finally {
       setSavingApiKey(false);
     }
@@ -139,12 +144,17 @@ export default function SettingsClient({
         body: JSON.stringify({ userId, role: newRole }),
       });
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        addToast("error", data.error || "Failed to update role.");
         setUserRoles((prev) => ({
           ...prev,
           [userId]: initialUsers.find((u) => u.id === userId)?.role ?? "viewer",
         }));
+      } else {
+        addToast("success", "Role updated.");
       }
     } catch {
+      addToast("error", "Network error. Role not updated.");
       setUserRoles((prev) => ({
         ...prev,
         [userId]: initialUsers.find((u) => u.id === userId)?.role ?? "viewer",
@@ -261,7 +271,7 @@ export default function SettingsClient({
           </button>
         </div>
         {message && (
-          <p className="mt-2 text-sm text-emerald-600">{message}</p>
+          <p className={`mt-2 text-sm ${message.type === "error" ? "text-red-600" : "text-emerald-600"}`}>{message.text}</p>
         )}
       </div>
 
@@ -293,6 +303,7 @@ export default function SettingsClient({
               type="button"
               onClick={() => setShowApiKey(!showApiKey)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              aria-label={showApiKey ? "Hide API key" : "Show API key"}
             >
               {showApiKey ? (
                 <EyeOff className="h-4 w-4" />
@@ -311,7 +322,7 @@ export default function SettingsClient({
           </button>
         </div>
         {apiKeyMessage && (
-          <p className="mt-2 text-sm text-emerald-600">{apiKeyMessage}</p>
+          <p className={`mt-2 text-sm ${apiKeyMessage.type === "error" ? "text-red-600" : "text-emerald-600"}`}>{apiKeyMessage.text}</p>
         )}
         <p className="mt-3 text-xs text-slate-400">
           Get your API key from{" "}
@@ -392,6 +403,7 @@ export default function SettingsClient({
                   onClick={() => openEditModal(user)}
                   className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                   title="Edit user"
+                  aria-label={`Edit ${user.name}`}
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
