@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PricingResult } from '@/lib/pricing';
-import { createDeal } from '@/app/(dashboard)/deals/actions';
+import { createDeal, updateDeal } from '@/app/(dashboard)/deals/actions';
 
 import MerchantInfo from './steps/MerchantInfo';
 import VolumeData from './steps/VolumeData';
@@ -22,7 +22,7 @@ const STEPS = [
   { label: 'Review', shortLabel: 'Review' },
 ];
 
-interface WizardFormData {
+export interface WizardFormData {
   merchantName: string;
   hotelGroup: string;
   starRating: number;
@@ -50,7 +50,7 @@ interface WizardFormData {
   merchantDccShare: number;
 }
 
-const initialData: WizardFormData = {
+const emptyData: WizardFormData = {
   merchantName: '',
   hotelGroup: '',
   starRating: 4,
@@ -69,10 +69,17 @@ const initialData: WizardFormData = {
   merchantDccShare: 1.0,
 };
 
-export default function WizardShell() {
+interface WizardShellProps {
+  /** When set, the wizard edits this deal (updateDeal) instead of creating one. */
+  dealId?: string;
+  initialData?: WizardFormData;
+}
+
+export default function WizardShell({ dealId, initialData }: WizardShellProps = {}) {
   const router = useRouter();
+  const isEditing = Boolean(dealId);
   const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState<WizardFormData>(initialData);
+  const [formData, setFormData] = useState<WizardFormData>(initialData ?? emptyData);
 
   const totalSteps = STEPS.length;
   const progressPercent = ((step + 1) / totalSteps) * 100;
@@ -125,10 +132,15 @@ export default function WizardShell() {
       dccUptake: formData.dccUptake,
       dccMarkup: formData.dccMarkup,
       merchantDccShare: formData.merchantDccShare,
-      mode: 'wizard' as const,
     };
 
-    const deal = await createDeal(dealData);
+    if (dealId) {
+      await updateDeal(dealId, dealData);
+      router.push(`/deals/${dealId}`);
+      return;
+    }
+
+    const deal = await createDeal({ ...dealData, mode: 'wizard' as const });
     router.push(`/deals/${deal.id}`);
   }
 
@@ -248,6 +260,8 @@ export default function WizardShell() {
             data={formData}
             onGoToStep={goToStep}
             onSubmit={handleSubmit}
+            submitLabel={isEditing ? 'Save Changes' : 'Create Deal'}
+            submittingLabel={isEditing ? 'Saving...' : 'Creating Deal...'}
           />
         )}
       </div>
