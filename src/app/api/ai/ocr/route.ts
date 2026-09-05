@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { parseStatement } from '@/lib/ai/ocr';
 import { rateLimit } from '@/lib/rate-limit';
+import { canEditDeals } from '@/lib/auth/permissions';
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!canEditDeals(session)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { success } = rateLimit(session.userId, 10, 60000);

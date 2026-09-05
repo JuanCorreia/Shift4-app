@@ -4,6 +4,7 @@ import { deals, escalations } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getSession } from '@/lib/auth/session';
 import { partnerFilter } from '@/lib/db/helpers';
+import { isAdmin } from '@/lib/auth/permissions';
 
 export async function GET(
   _request: NextRequest,
@@ -40,6 +41,10 @@ export async function PATCH(
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // Resolving an escalation is a pricing control - admins only
+  if (!isAdmin(session)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   // Verify deal belongs to user's partner

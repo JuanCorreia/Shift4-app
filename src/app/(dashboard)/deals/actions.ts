@@ -9,11 +9,13 @@ import { partnerFilter } from "@/lib/db/helpers";
 import { revalidatePath } from "next/cache";
 import { calculatePricing } from "@/lib/pricing/engine";
 import { sendDealStatusEmail } from "@/lib/email";
+import { requireEditRole, requireAdminRole, isAdmin } from "@/lib/auth/permissions";
 import type { PricingInput } from "@/lib/pricing";
 
 export async function createDeal(data: unknown) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
+  requireEditRole(session);
   if (!session.partnerId) throw new Error("No partner assigned");
 
   const parsed = dealFormSchema.parse(data);
@@ -104,6 +106,7 @@ export async function createDeal(data: unknown) {
 export async function updateDeal(id: string, data: unknown) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
+  requireEditRole(session);
 
   const parsed = dealFormSchema.partial().parse(data);
 
@@ -234,6 +237,7 @@ export async function updateDeal(id: string, data: unknown) {
 export async function deleteDeal(id: string) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
+  requireAdminRole(session);
 
   const pf = partnerFilter(session);
   const conditions = pf ? and(eq(deals.id, id), pf) : eq(deals.id, id);
@@ -280,14 +284,38 @@ export async function permanentlyDeleteDeal(id: string) {
   revalidatePath("/deals");
 }
 
-export async function updateDealStatus(id: string, newStatus: "draft" | "review" | "approved" | "sent" | "archived") {
+type DealStatus = "draft" | "review" | "approved" | "sent" | "archived";
+
+// Server-side mirror of the StatusWorkflow transition rules:
+// draft -> review (analyst+), review -> approved (admin), approved -> sent (admin),
+// any non-archived -> archived (admin).
+const STATUS_TRANSITIONS: Record<DealStatus, DealStatus[]> = {
+  draft: ["review"],
+  review: ["approved"],
+  approved: ["sent"],
+  sent: [],
+  archived: [],
+};
+
+export async function updateDealStatus(id: string, newStatus: DealStatus) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
+  requireEditRole(session);
 
   const pf = partnerFilter(session);
   const conditions = pf ? and(eq(deals.id, id), pf) : eq(deals.id, id);
   const [existing] = await db.select().from(deals).where(conditions);
   if (!existing) throw new Error("Deal not found");
+
+  const current = existing.status as DealStatus;
+  const isArchive = newStatus === "archived" && current !== "archived";
+  const allowed = isArchive || STATUS_TRANSITIONS[current].includes(newStatus);
+  if (!allowed) throw new Error(`Cannot move a deal from ${current} to ${newStatus}`);
+
+  const needsAdmin = isArchive || newStatus === "approved" || newStatus === "sent";
+  if (needsAdmin && !isAdmin(session)) {
+    throw new Error("Only admins can approve, send or archive deals");
+  }
 
   await db
     .update(deals)
