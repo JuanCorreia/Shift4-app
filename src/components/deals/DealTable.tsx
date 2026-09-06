@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { deals } from "@/lib/db/schema";
-import { eq, like, desc, asc, sql, and, gte, lte, SQL } from "drizzle-orm";
+import { eq, ilike, desc, asc, sql, and, gte, lte, SQL } from "drizzle-orm";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
@@ -51,7 +51,9 @@ export async function DealTable({
   }
 
   if (search) {
-    conditions.push(like(deals.merchantName, `%${search}%`));
+    // Postel: `like` is case-sensitive in Postgres, so "grand" missed
+    // "Grand Hotel Lisbon". `ilike` accepts the casing people actually type.
+    conditions.push(ilike(deals.merchantName, `%${search}%`));
   }
 
   if (from) {

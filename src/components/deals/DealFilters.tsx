@@ -54,7 +54,9 @@ export default function DealFilters() {
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    updateParams({ search: searchValue });
+    // A pasted merchant name usually carries leading/trailing spaces; they
+    // would otherwise become part of the LIKE pattern and match nothing.
+    updateParams({ search: searchValue.trim() });
   }
 
   function getExportParams(): string {
