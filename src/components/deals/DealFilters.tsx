@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, SlidersHorizontal, Download, FileText } from 'lucide-react';
+import { Search, SlidersHorizontal, Download, FileText, CalendarRange } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -33,6 +33,9 @@ export default function DealFilters() {
 
   const [searchValue, setSearchValue] = useState(currentSearch);
   const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null);
+  // Tesler: the date range is the rare filter, so it starts folded away — but
+  // never while it is actually filtering the list.
+  const [showDates, setShowDates] = useState(Boolean(currentFrom || currentTo));
   const { addToast } = useToast();
 
   const updateParams = useCallback(
@@ -135,29 +138,42 @@ export default function DealFilters() {
           </button>
         </form>
 
-        {/* Date from */}
-        <div className="flex flex-col">
-          <label htmlFor="deal-from" className="text-xs text-gray-500 mb-1">From</label>
-          <input
-            id="deal-from"
-            type="date"
-            value={currentFrom}
-            onChange={(e) => updateParams({ from: e.target.value })}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
-          />
-        </div>
+        {/* Date range — folded away until asked for */}
+        {showDates ? (
+          <>
+            <div className="flex flex-col">
+              <label htmlFor="deal-from" className="text-xs text-gray-500 mb-1">From</label>
+              <input
+                id="deal-from"
+                type="date"
+                value={currentFrom}
+                onChange={(e) => updateParams({ from: e.target.value })}
+                className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
+              />
+            </div>
 
-        {/* Date to */}
-        <div className="flex flex-col">
-          <label htmlFor="deal-to" className="text-xs text-gray-500 mb-1">To</label>
-          <input
-            id="deal-to"
-            type="date"
-            value={currentTo}
-            onChange={(e) => updateParams({ to: e.target.value })}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
-          />
-        </div>
+            <div className="flex flex-col">
+              <label htmlFor="deal-to" className="text-xs text-gray-500 mb-1">To</label>
+              <input
+                id="deal-to"
+                type="date"
+                value={currentTo}
+                onChange={(e) => updateParams({ to: e.target.value })}
+                className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
+              />
+            </div>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowDates(true)}
+            aria-expanded={false}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <CalendarRange className="w-3.5 h-3.5" />
+            Date range
+          </button>
+        )}
 
         {/* Sort */}
         <div className="flex flex-col">
