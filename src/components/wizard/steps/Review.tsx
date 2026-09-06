@@ -201,14 +201,21 @@ export default function Review({ data, onGoToStep, onSubmit, submitLabel = 'Crea
 
       {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        {/* Von Restorff: before a result exists, calculating is the one thing to
+            do; once it exists, saving the deal is - so the calculate button
+            steps down to a quiet "Recalculate". */}
         <button
           type="button"
           onClick={handleCalculate}
           disabled={!canCalculate}
-          className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-800 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className={`flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+            result
+              ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+              : 'text-white bg-emerald-800 hover:bg-emerald-700'
+          }`}
         >
           <Calculator className="w-5 h-5" />
-          Calculate Pricing
+          {result ? 'Recalculate' : 'Calculate Pricing'}
         </button>
 
         {result && (
@@ -216,7 +223,7 @@ export default function Review({ data, onGoToStep, onSubmit, submitLabel = 'Crea
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-800 text-white font-medium rounded-lg shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             {saving ? submittingLabel : submitLabel}
