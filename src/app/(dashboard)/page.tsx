@@ -77,15 +77,19 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
   const sent = getStatusStat("sent");
   const archived = getStatusStat("archived");
 
-  // Escalation alerts: count deals with unresolved escalations
+  // Escalation alerts: unresolved escalations per deal. Joined to `deals` so
+  // the alert can name the merchant (a bare "3 issues" chip said nothing about
+  // which deal it belonged to) and so the partner filter applies here too.
   const dealsWithEscalations = await db
     .select({
       dealId: escalations.dealId,
+      merchantName: deals.merchantName,
       count: sql<number>`count(*)`,
     })
     .from(escalations)
-    .where(eq(escalations.resolved, false))
-    .groupBy(escalations.dealId);
+    .innerJoin(deals, eq(escalations.dealId, deals.id))
+    .where(pf ? sql`${escalations.resolved} = false AND ${pf}` : eq(escalations.resolved, false))
+    .groupBy(escalations.dealId, deals.merchantName);
 
   const totalCount = draft.count + review.count + approved.count + sent.count + archived.count;
 
@@ -152,8 +156,44 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
         </Link>
       </div>
 
-      {/* Stat cards grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Escalation alerts — the only thing on this page that asks for action,
+          so it sits above the metrics instead of below eight stat cards. */}
+      {dealsWithEscalations.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-amber-800">
+                {dealsWithEscalations.length} deal{dealsWithEscalations.length !== 1 ? 's' : ''} with unresolved escalations
+              </h3>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {dealsWithEscalations.slice(0, 5).map((row) => (
+                  <Link
+                    key={row.dealId}
+                    href={`/deals/${row.dealId}?tab=escalations`}
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full hover:bg-amber-200 transition-colors"
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    {row.merchantName} &middot; {Number(row.count)} issue{Number(row.count) !== 1 ? 's' : ''}
+                  </Link>
+                ))}
+                {dealsWithEscalations.length > 5 && (
+                  <span className="inline-flex items-center px-3 py-1 text-xs text-amber-600">
+                    +{dealsWithEscalations.length - 5} more
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pipeline stage counts */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+          Pipeline
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card) => {
           const Icon = card.icon;
           return (
@@ -180,10 +220,15 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
             </div>
           );
         })}
-      </div>
+        </div>
+      </section>
 
-      {/* Revenue boxes */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Commercial outcome of the pipeline above */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+          Performance
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           {
             label: "Projected Savings",
@@ -238,7 +283,8 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
             </div>
           );
         })}
-      </div>
+        </div>
+      </section>
 
       {/* Pipeline summary */}
       <div className="flex items-center gap-4 text-sm text-slate-500">
@@ -249,37 +295,6 @@ export default async function DashboardPage({ searchParams }: DashboardProps) {
           {archived.count} archived ({fmtVol(archived.volume)})
         </span>
       </div>
-
-      {/* Escalation alerts */}
-      {dealsWithEscalations.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-sm font-semibold text-amber-800">
-                {dealsWithEscalations.length} deal{dealsWithEscalations.length !== 1 ? 's' : ''} with unresolved escalations
-              </h3>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {dealsWithEscalations.slice(0, 5).map((row) => (
-                  <Link
-                    key={row.dealId}
-                    href={`/deals/${row.dealId}?tab=escalations`}
-                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full hover:bg-amber-200 transition-colors"
-                  >
-                    <AlertTriangle className="w-3 h-3" />
-                    {Number(row.count)} issue{Number(row.count) !== 1 ? 's' : ''}
-                  </Link>
-                ))}
-                {dealsWithEscalations.length > 5 && (
-                  <span className="inline-flex items-center px-3 py-1 text-xs text-amber-600">
-                    +{dealsWithEscalations.length - 5} more
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Filters */}
       <DealFilters />
