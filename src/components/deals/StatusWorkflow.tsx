@@ -65,6 +65,7 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
   const [isPending, startTransition] = useTransition();
   const [confirmTarget, setConfirmTarget] = useState<DealStatus | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const currentIdx = STATUS_ORDER.indexOf(currentStatus);
@@ -72,16 +73,29 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
 
   function handleConfirm() {
     if (!confirmTarget) return;
+    setError(null);
     startTransition(async () => {
-      await updateDealStatus(dealId, confirmTarget);
-      setConfirmTarget(null);
+      try {
+        // Deliberately pessimistic: the stepper only moves once the server has
+        // written the new status. A deal status drives pricing approval and
+        // what gets sent to the merchant, so it is never updated optimistically.
+        await updateDealStatus(dealId, confirmTarget);
+        setConfirmTarget(null);
+      } catch {
+        setError("The status could not be changed. It may have been updated by someone else — reload the page and try again.");
+      }
     });
   }
 
   function handlePermanentDelete() {
+    setError(null);
     startTransition(async () => {
-      await permanentlyDeleteDeal(dealId);
-      router.push('/');
+      try {
+        await permanentlyDeleteDeal(dealId);
+        router.push('/');
+      } catch {
+        setError("The deal could not be deleted. Reload the page and try again.");
+      }
     });
   }
 
@@ -145,7 +159,7 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
           {actions.map((action) => (
             <button
               key={action.target}
-              onClick={() => setConfirmTarget(action.target)}
+              onClick={() => { setError(null); setConfirmTarget(action.target); }}
               disabled={isPending}
               className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 action.target === 'archived'
@@ -164,7 +178,7 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
       {currentStatus === 'archived' && canArchive(userRole) && (
         <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
           <button
-            onClick={() => setConfirmDelete(true)}
+            onClick={() => { setError(null); setConfirmDelete(true); }}
             disabled={isPending}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
           >
@@ -194,9 +208,14 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
               <span className="font-medium">{STEPS.find((s) => s.key === confirmTarget)?.label}</span>?
               {confirmTarget === 'archived' && ' This will archive the deal.'}
             </p>
+            {error && (
+              <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </p>
+            )}
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setConfirmTarget(null)}
+                onClick={() => { setError(null); setConfirmTarget(null); }}
                 disabled={isPending}
                 className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
@@ -228,9 +247,14 @@ export default function StatusWorkflow({ dealId, currentStatus, userRole }: Stat
             <p className="text-sm text-gray-600 mb-6">
               This will permanently delete this deal and all its history. This action <span className="font-semibold text-red-600">cannot be undone</span>.
             </p>
+            {error && (
+              <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+              </p>
+            )}
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setConfirmDelete(false)}
+                onClick={() => { setError(null); setConfirmDelete(false); }}
                 disabled={isPending}
                 className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
