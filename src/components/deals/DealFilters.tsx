@@ -84,10 +84,18 @@ export default function DealFilters() {
       }
       const blob = await res.blob();
       const a = document.createElement('a');
+      const filename = `deals-export-${new Date().toISOString().split('T')[0]}.${type}`;
       a.href = URL.createObjectURL(blob);
-      a.download = `deals-export-${new Date().toISOString().split('T')[0]}.${type}`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(a.href);
+      // Peak-end: a failed export said so, a successful one said nothing — on a
+      // browser that drops the file straight into Downloads, nothing on screen
+      // confirmed the export had happened at all.
+      addToast(
+        'success',
+        `Exported ${currentStatus === 'all' ? 'all deals' : `${currentStatus} deals`} to ${filename}`
+      );
     } catch {
       addToast('error', 'Export failed. Please try again.');
     } finally {
