@@ -254,6 +254,7 @@ export default function SettingsClient({
         <div className="flex gap-3">
           <input
             type="text"
+            aria-label="New team invite code"
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}
             className="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
@@ -294,6 +295,7 @@ export default function SettingsClient({
           <div className="relative flex-1">
             <input
               type={showApiKey ? "text" : "password"}
+              aria-label="Anthropic API key"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors font-mono"

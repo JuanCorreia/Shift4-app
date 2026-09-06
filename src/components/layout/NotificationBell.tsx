@@ -94,7 +94,8 @@ export default function NotificationBell() {
       <button
         onClick={() => setOpen(!open)}
         className="relative p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-        aria-label="Notifications"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+        aria-expanded={open}
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -134,7 +135,9 @@ export default function NotificationBell() {
                 >
                   <div className="flex items-start gap-2">
                     {!n.read && (
-                      <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                      <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0">
+                        <span className="sr-only">Unread</span>
+                      </span>
                     )}
                     <div className={!n.read ? "" : "pl-4"}>
                       <p className="text-sm font-medium text-slate-700">{n.title}</p>
