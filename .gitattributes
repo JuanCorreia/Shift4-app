@@ -1,0 +1,5 @@
+# Files mounted into Linux containers must keep LF endings on every platform
+*.sh text eol=lf
+init.sql text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf

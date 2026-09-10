@@ -34,9 +34,13 @@ CREATE TABLE IF NOT EXISTS users (
   role user_role NOT NULL DEFAULT 'analyst',
   partner_id UUID REFERENCES partners(id),
   invite_code VARCHAR(255),
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  email_notifications BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN NOT NULL DEFAULT TRUE;
 
 -- Team settings table
 CREATE TABLE IF NOT EXISTS team_settings (
@@ -44,10 +48,12 @@ CREATE TABLE IF NOT EXISTS team_settings (
   partner_id UUID NOT NULL REFERENCES partners(id),
   invite_code VARCHAR(255) NOT NULL UNIQUE,
   team_name VARCHAR(255),
-  anthropic_api_key VARCHAR(255),
+  anthropic_api_key VARCHAR(500),
+  narrative_tone VARCHAR(20) DEFAULT 'formal',
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+ALTER TABLE team_settings ADD COLUMN IF NOT EXISTS narrative_tone VARCHAR(20) DEFAULT 'formal';
 
 -- Deals table
 CREATE TABLE IF NOT EXISTS deals (
@@ -62,6 +68,7 @@ CREATE TABLE IF NOT EXISTS deals (
   card_mix_visa NUMERIC(5,2) DEFAULT 40,
   card_mix_mastercard NUMERIC(5,2) DEFAULT 35,
   card_mix_amex NUMERIC(5,2) DEFAULT 15,
+  card_mix_mbway NUMERIC(5,2) DEFAULT 0,
   card_mix_other NUMERIC(5,2) DEFAULT 10,
   card_mix_international NUMERIC(5,2) DEFAULT 25,
   card_mix_corporate NUMERIC(5,2) DEFAULT 15,
@@ -72,9 +79,11 @@ CREATE TABLE IF NOT EXISTS deals (
   current_monthly_fee NUMERIC(10,2),
   dcc_eligible BOOLEAN DEFAULT FALSE,
   dcc_uptake NUMERIC(5,2) DEFAULT 0,
-  dcc_markup NUMERIC(5,2) DEFAULT 2.5,
+  dcc_markup NUMERIC(5,2) DEFAULT 3.5,
+  merchant_dcc_share NUMERIC(5,2) DEFAULT 1.0,
   pricing_result JSONB,
   narrative TEXT,
+  market_context TEXT,
   statement_url VARCHAR(500),
   ocr_data JSONB,
   mode VARCHAR(10) NOT NULL DEFAULT 'wizard',
@@ -85,6 +94,9 @@ CREATE TABLE IF NOT EXISTS deals (
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS card_mix_mbway NUMERIC(5,2) DEFAULT 0;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS merchant_dcc_share NUMERIC(5,2) DEFAULT 1.0;
+ALTER TABLE deals ADD COLUMN IF NOT EXISTS market_context TEXT;
 
 -- Deal history table
 CREATE TABLE IF NOT EXISTS deal_history (
@@ -123,30 +135,59 @@ CREATE TABLE IF NOT EXISTS otp_codes (
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- Seed: default partner
+-- Login attempts (rate limiting / lockout)
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) NOT NULL,
+  ip VARCHAR(100) NOT NULL,
+  user_agent VARCHAR(500),
+  success BOOLEAN NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- In-app notifications
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type VARCHAR(50) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  deal_id UUID REFERENCES deals(id) ON DELETE CASCADE,
+  read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Pricing snapshots
+CREATE TABLE IF NOT EXISTS pricing_snapshots (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  snapshot_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  pricing_result JSONB NOT NULL,
+  trigger_action VARCHAR(50) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Audit log
+CREATE TABLE IF NOT EXISTS audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  action VARCHAR(100) NOT NULL,
+  resource VARCHAR(100) NOT NULL,
+  resource_id VARCHAR(255),
+  details JSONB,
+  ip VARCHAR(100),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Seed: default partner (not a secret)
 INSERT INTO partners (name, slug)
 VALUES ('Host Hotel Systems', 'host')
 ON CONFLICT (slug) DO NOTHING;
 
--- Seed: default team with invite code "shift4team" linked to default partner
-INSERT INTO team_settings (partner_id, invite_code, team_name)
-VALUES (
-  (SELECT id FROM partners WHERE slug = 'host'),
-  'shift4team',
-  'Shift4 Hospitality Team'
-)
-ON CONFLICT (invite_code) DO NOTHING;
-
--- Seed: admin user linked to default partner
-INSERT INTO users (name, email, role, partner_id, invite_code)
-VALUES (
-  'Admin',
-  'admin@shift4.com',
-  'admin',
-  (SELECT id FROM partners WHERE slug = 'host'),
-  'shift4team'
-)
-ON CONFLICT (email) DO NOTHING;
+-- NOTE: no invite code and no admin user are seeded here. The first team
+-- invite code and admin account are created by init-seed.sh from the
+-- SEED_ADMIN_EMAIL / SEED_ADMIN_NAME / SEED_INVITE_CODE environment variables
+-- (see README "Bootstrapping the first admin"). Never commit real codes.
 
 -- ===========================================
 -- MIGRATION: Run these on existing Neon DB

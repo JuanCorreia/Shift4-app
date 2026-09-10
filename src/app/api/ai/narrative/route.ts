@@ -6,12 +6,16 @@ import { eq, and } from 'drizzle-orm';
 import { partnerFilter } from '@/lib/db/helpers';
 import { generateNarrative, generateMarketContext, dealToNarrativeInput } from '@/lib/ai/narrative';
 import { rateLimit } from '@/lib/rate-limit';
+import { canEditDeals } from '@/lib/auth/permissions';
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!canEditDeals(session)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { success } = rateLimit(session.userId, 10, 60000);

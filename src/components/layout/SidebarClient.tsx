@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { LayoutDashboard, PlusCircle, Settings, Building2, BarChart3, Zap, X } from "lucide-react";
@@ -27,6 +27,21 @@ interface SidebarClientProps {
 export default function SidebarClient({ navItems, role }: SidebarClientProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close on Escape and lock body scroll while the drawer is open
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileOpen]);
 
   const filteredItems = navItems.filter((item) => {
     if (item.href === "/settings" && role !== "admin" && role !== "super_admin") return false;
@@ -87,6 +102,10 @@ export default function SidebarClient({ navItems, role }: SidebarClientProps) {
 
       {/* Mobile sidebar */}
       <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
+        aria-hidden={!mobileOpen}
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#395542] border-r border-emerald-900/30 transform transition-transform lg:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -102,7 +121,8 @@ export default function SidebarClient({ navItems, role }: SidebarClientProps) {
           </div>
           <button
             onClick={() => setMobileOpen(false)}
-            className="text-slate-400 hover:text-white"
+            className="p-2 -mr-2 text-slate-400 hover:text-white rounded-lg"
+            aria-label="Close menu"
           >
             <X className="h-5 w-5" />
           </button>

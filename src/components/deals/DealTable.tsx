@@ -1,12 +1,13 @@
 import { db } from "@/lib/db";
 import { deals } from "@/lib/db/schema";
-import { eq, like, desc, asc, sql, and, gte, lte, SQL } from "drizzle-orm";
+import { eq, ilike, desc, asc, sql, and, gte, lte, SQL } from "drizzle-orm";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { DealCard } from "./DealCard";
 import { getSession } from "@/lib/auth/session";
 import { partnerFilter } from "@/lib/db/helpers";
+import { formatEur } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -18,15 +19,6 @@ function getTierLabel(volume: string): string {
   if (v >= 5_000_000) return "Tier 3";
   if (v >= 1_000_000) return "Tier 4";
   return "Tier 5";
-}
-
-function formatCurrency(value: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(Number(value));
 }
 
 interface DealTableProps {
@@ -59,7 +51,9 @@ export async function DealTable({
   }
 
   if (search) {
-    conditions.push(like(deals.merchantName, `%${search}%`));
+    // Postel: `like` is case-sensitive in Postgres, so "grand" missed
+    // "Grand Hotel Lisbon". `ilike` accepts the casing people actually type.
+    conditions.push(ilike(deals.merchantName, `%${search}%`));
   }
 
   if (from) {
@@ -100,6 +94,71 @@ export async function DealTable({
   const totalCount = Number(count);
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
   const offset = (page - 1) * ITEMS_PER_PAGE;
+
+  const pageHref = (p: number) =>
+    `/?page=${p}${status !== "all" ? `&status=${status}` : ""}${search ? `&search=${encodeURIComponent(search)}` : ""}${sort !== "newest" ? `&sort=${sort}` : ""}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`;
+
+  // Windowed page list: 1 ... (page-1) page (page+1) ... last
+  const pageItems: (number | "gap")[] = [];
+  if (totalPages > 1) {
+    const wanted = new Set<number>([1, totalPages, page - 1, page, page + 1]);
+    let last = 0;
+    for (let p = 1; p <= totalPages; p++) {
+      if (!wanted.has(p)) continue;
+      if (p - last > 1) pageItems.push("gap");
+      pageItems.push(p);
+      last = p;
+    }
+  }
+
+  const pagination =
+    totalPages > 1 ? (
+      <nav
+        aria-label="Pagination"
+        className="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-3 border-t border-gray-100"
+      >
+        <p className="text-xs text-gray-500">
+          Showing {offset + 1}-{Math.min(offset + ITEMS_PER_PAGE, totalCount)} of{" "}
+          {totalCount} deals
+        </p>
+        <div className="flex items-center gap-1">
+          {page > 1 ? (
+            <Link href={pageHref(page - 1)} className="px-2 py-1 text-xs rounded text-gray-600 hover:bg-gray-100">
+              Prev
+            </Link>
+          ) : (
+            <span className="px-2 py-1 text-xs rounded text-gray-300">Prev</span>
+          )}
+          {pageItems.map((item, idx) =>
+            item === "gap" ? (
+              <span key={`gap-${idx}`} className="px-1 text-xs text-gray-400">
+                &hellip;
+              </span>
+            ) : (
+              <Link
+                key={item}
+                href={pageHref(item)}
+                aria-current={item === page ? "page" : undefined}
+                className={`px-3 py-1 text-xs rounded ${
+                  item === page
+                    ? "bg-emerald-800 text-white"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                {item}
+              </Link>
+            )
+          )}
+          {page < totalPages ? (
+            <Link href={pageHref(page + 1)} className="px-2 py-1 text-xs rounded text-gray-600 hover:bg-gray-100">
+              Next
+            </Link>
+          ) : (
+            <span className="px-2 py-1 text-xs rounded text-gray-300">Next</span>
+          )}
+        </div>
+      </nav>
+    ) : null;
 
   // Fetch deals
   const dealRows = await db
@@ -144,6 +203,9 @@ export async function DealTable({
             tier={getTierLabel(deal.annualVolume)}
           />
         ))}
+        {pagination && (
+          <div className="bg-white rounded-xl border border-gray-200 [&>nav]:border-t-0">{pagination}</div>
+        )}
       </div>
 
       {/* Desktop table */}
@@ -192,7 +254,7 @@ export async function DealTable({
                   )}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-700">
-                  {formatCurrency(deal.annualVolume)}
+                  {formatEur(deal.annualVolume)}
                 </td>
                 <td className="px-6 py-4">
                   <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
@@ -211,7 +273,7 @@ export async function DealTable({
                 <td className="px-6 py-4 text-right">
                   <Link
                     href={`/deals/${deal.id}`}
-                    className="text-xs text-emerald-800 hover:text-emerald-900 font-medium"
+                    className="text-sm text-emerald-800 hover:text-emerald-900 font-medium"
                   >
                     View
                   </Link>
@@ -223,29 +285,7 @@ export async function DealTable({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100">
-          <p className="text-xs text-gray-500">
-            Showing {offset + 1}-{Math.min(offset + ITEMS_PER_PAGE, totalCount)} of{" "}
-            {totalCount} deals
-          </p>
-          <div className="flex gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <Link
-                key={p}
-                href={`/?page=${p}${status !== "all" ? `&status=${status}` : ""}${search ? `&search=${search}` : ""}${sort !== "newest" ? `&sort=${sort}` : ""}${from ? `&from=${from}` : ""}${to ? `&to=${to}` : ""}`}
-                className={`px-3 py-1 text-xs rounded ${
-                  p === page
-                    ? "bg-emerald-800 text-white"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-              >
-                {p}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      {pagination}
       </div>
     </div>
   );

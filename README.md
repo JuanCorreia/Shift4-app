@@ -38,21 +38,34 @@ A Next.js application for Shift4's hospitality payments team that automates merc
 ### Docker Setup (Recommended)
 
 1. Clone the repository
-2. Create `.env` file:
+2. Create a `.env` file (never commit it). Required values:
    ```env
-   DATABASE_URL=postgresql://shift4user:shift4pass@db:5432/shift4db
-   JWT_SECRET=your-jwt-secret-here
-   ANTHROPIC_API_KEY=sk-ant-your-key-here
+   POSTGRES_PASSWORD=<random>                 # local Postgres password
+   JWT_SECRET=<openssl rand -base64 48>       # session signing secret (>= 32 bytes)
+   ENCRYPTION_KEY=<openssl rand -hex 32>      # AES-256 key for API keys at rest
+   # First-run bootstrap (only read when the DB volume is empty):
+   SEED_ADMIN_EMAIL=you@yourcompany.com
+   SEED_ADMIN_NAME=Your Name
+   SEED_INVITE_CODE=<random, >= 16 characters>
+   # E-mail — required for login (one-time codes are sent by e-mail):
+   SMTP_HOST=... SMTP_PORT=587 SMTP_USER=... SMTP_PASS=... SMTP_FROM=...
+   # Optional:
+   ANTHROPIC_API_KEY=sk-ant-...
    SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=...
    ```
+   Compose refuses to start if `POSTGRES_PASSWORD` or `JWT_SECRET` is missing; there are no built-in defaults.
 3. Run:
    ```bash
    docker compose up --build
    ```
 4. Open [http://localhost:8000](http://localhost:8000)
+
+#### Bootstrapping the first admin
+`init-seed.sh` runs once on an empty database volume. It hashes `SEED_INVITE_CODE` with bcrypt (pgcrypto) and creates the `SEED_ADMIN_EMAIL` user with the `admin` role. It refuses weak or short codes. If you skipped the variables on first start, run it later with:
+```bash
+docker compose exec -e SEED_ADMIN_EMAIL=... -e SEED_INVITE_CODE=... db sh /docker-entrypoint-initdb.d/20-seed.sh
+```
 
 ### Local Development
 
@@ -73,16 +86,15 @@ A Next.js application for Shift4's hospitality payments team that automates merc
 
 ## Authentication
 
-The app uses a shared team invite code model (not per-user passwords):
+The app uses a shared team invite code plus e-mail verification (no per-user passwords):
 
-1. An admin sets the team invite code in Settings
-2. New users enter the invite code + their name/email to join
-3. Users receive a JWT session (7-day expiry)
-4. Admins can assign roles: **Admin**, **Analyst**, or **Viewer**
+1. An admin sets the team invite code in Settings (minimum 16 characters; stored bcrypt-hashed)
+2. New users enter the invite code + their name/email
+3. A 6-digit one-time code is e-mailed to that address and must be entered to sign in — the invite code alone never grants a session
+4. Users receive a JWT session (7-day expiry); deactivated users lose access immediately
+5. Admins can assign roles: **Admin**, **Analyst**, or **Viewer** (viewers are read-only, enforced server-side)
 
-**Default credentials (Docker):**
-- Invite code: `shift4team`
-- Admin email: `admin@shift4.com`
+There are no default credentials. Bootstrap the first admin with the `SEED_*` variables described above. Login requires working SMTP settings.
 
 ## Deal Creation Modes
 

@@ -20,7 +20,7 @@ Next.js 14 app for Banyan's hospitality payments team. Automates merchant statem
 - **Roles:** `super_admin` | `admin` | `analyst` | `viewer`. Super admin sees all partners; admin manages their own partner; analyst/viewer scoped to partner deals.
 - **Pricing engine:** Pure TypeScript in `src/lib/pricing/` — zero side effects, zero DB/API imports. Runs client-side for instant feedback, server-side on submit for validation.
 - **Lazy initialization:** DB, Supabase, and Anthropic clients use lazy init (Proxy pattern for DB) to avoid build-time crashes in standalone Next.js output.
-- **Edge Runtime limitation:** `src/middleware.ts` uses cookie-existence check only (no JWT verify) because `jsonwebtoken` doesn't work in Edge Runtime.
+- **Middleware:** `src/middleware.ts` verifies the JWT with `jose` (Edge-compatible), fails closed if `JWT_SECRET` is missing, and rejects cross-origin mutating `/api/*` requests.
 - **API key storage:** Anthropic API key AES-256-GCM encrypted in `team_settings.anthropic_api_key` (DB), falls back to `ANTHROPIC_API_KEY` env var. Encryption via `src/lib/crypto.ts` using `ENCRYPTION_KEY` env var.
 - **Session refresh:** Dashboard layout auto-renews JWT cookie if expiry is within 2 days.
 - **Proposal templates:** 3 designs (Standard green, Premium navy/gold, Minimal white/gray) in `src/lib/export/templates.ts`. Applied to both PDF and DOCX exports.
@@ -34,9 +34,9 @@ Next.js 14 app for Banyan's hospitality payments team. Automates merchant statem
 - CSS variables in `globals.css`: primary `147 22% 27%`, secondary `18 40% 65%`
 
 ## Deployment
-- **Production:** Vercel at `shift4-app.vercel.app` (auto-deploys from GitHub `JuanCorreia/Shift4-app`)
-- **Database:** Neon PostgreSQL (`sparkling-leaf-90360563`, org `org-aged-dawn-55264654`)
-- **Local:** `docker compose up` on port 8000
+- **Production:** Vercel (auto-deploys from GitHub). Environment identifiers live in the private runbook, not in this repo.
+- **Database:** Neon PostgreSQL (production), Docker Postgres (local)
+- **Local:** `docker compose up` on port 8000 — requires `POSTGRES_PASSWORD`, `JWT_SECRET` and the `SEED_*` bootstrap vars in `.env` (see README)
 
 ## Project Structure
 ```
@@ -116,16 +116,15 @@ docker compose up    # Run with Docker (port 8000)
 - `JWT_SECRET` — JWT signing secret
 - `ANTHROPIC_API_KEY` — Fallback AI key (can be set in Settings UI instead)
 - `ENCRYPTION_KEY` — 32-byte hex for AES-256-GCM API key encryption (generate: `openssl rand -hex 32`)
-- `NEXT_PUBLIC_APP_URL` — Base URL for email links (e.g., `https://shift4-app.vercel.app`)
+- `NEXT_PUBLIC_APP_URL` — Base URL for email links
 - `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` — Email sending (nodemailer)
 - `SUPABASE_URL` — Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY` — Supabase service role key
 - `NEXT_PUBLIC_SUPABASE_URL` — Public Supabase URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Public Supabase anon key
 
-## Test Credentials
-- **Invite code:** `shift4team`
-- **Admin user:** admin@shift4.com
+## Credentials
+- No default credentials exist in the repo or seeds. First admin + invite code come from `SEED_ADMIN_EMAIL` / `SEED_INVITE_CODE` (Docker, `init-seed.sh`) or are created directly in the DB. Invite codes are bcrypt-hashed; login always requires the e-mailed OTP.
 
 ## Multi-Partner Tenancy
 - `partners` table: id, name, slug, logo_url, active
@@ -154,5 +153,5 @@ New (Phase 1-6): `login_attempts`, `notifications`, `pricing_snapshots`, `audit_
 - Reports page uses recharts (BarChart, PieChart, LineChart) — ~120KB first load JS
 - AI narrative supports tone parameter: `formal` | `conversational` | `technical` (stored in `team_settings.narrative_tone`)
 - Translation via Claude API in `src/lib/ai/translate.ts` — EN/PT/ES/FR
-- PWA: manifest at `public/manifest.json`, service worker at `public/sw.js`
+- PWA: manifest at `public/manifest.json`, icons in `public/icons/` (no service worker)
 - recharts Tooltip formatters must use `(value) =>` not `(value: number) =>` (value can be undefined)

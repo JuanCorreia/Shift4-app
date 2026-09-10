@@ -30,9 +30,20 @@ export default function TierIndicator({ tier, tierName, size = 'md' }: TierIndic
   return (
     <div className="relative inline-block">
       <span
-        className={`inline-flex items-center gap-1.5 font-semibold rounded-full border ${config.bg} ${config.color} ${config.border} ${sizeClasses[size]} cursor-help`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={showTooltip}
+        aria-label={`Tier ${tier}: ${config.name}. Volume ${config.range}, base rate ${config.rate}`}
+        className={`inline-flex items-center gap-1.5 font-semibold rounded-full border ${config.bg} ${config.color} ${config.border} ${sizeClasses[size]} cursor-help focus:outline-none focus:ring-2 focus:ring-emerald-500/40`}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
+        onFocus={() => setShowTooltip(true)}
+        onBlur={() => setShowTooltip(false)}
+        onClick={() => setShowTooltip((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowTooltip((v) => !v); }
+          if (e.key === 'Escape') setShowTooltip(false);
+        }}
       >
         <span className="font-bold">T{tier}</span>
         <span className="font-medium">{tierName}</span>

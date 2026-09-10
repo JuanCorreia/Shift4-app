@@ -11,6 +11,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Legend,
 } from "recharts";
 
 interface PipelineData {
@@ -92,11 +93,9 @@ export default function PipelineTab({
                   data={pieData}
                   cx="50%"
                   cy="50%"
-                  outerRadius={90}
+                  outerRadius="62%"
                   dataKey="value"
-                  label={({ name, percent }) =>
-                    `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                  }
+                  label={({ percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`}
                 >
                   {pieData.map((_, idx) => (
                     <Cell
@@ -110,6 +109,7 @@ export default function PipelineTab({
                     `€${(Number(value ?? 0) / 1_000_000).toFixed(1)}M`
                   }
                 />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>

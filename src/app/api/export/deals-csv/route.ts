@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { deals } from "@/lib/db/schema";
-import { eq, like, and, gte, lte, desc, SQL } from "drizzle-orm";
+import { eq, ilike, and, gte, lte, desc, SQL } from "drizzle-orm";
 import { partnerFilter } from "@/lib/db/helpers";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -16,10 +16,12 @@ function getTierLabel(volume: string): string {
 }
 
 function escapeCsv(val: string): string {
-  if (val.includes(",") || val.includes('"') || val.includes("\n")) {
-    return `"${val.replace(/"/g, '""')}"`;
+  // Neutralise spreadsheet formula injection (=, +, -, @, tab, CR at cell start)
+  let cell = /^[=+\-@\t\r]/.test(val) ? `'${val}` : val;
+  if (cell.includes(",") || cell.includes('"') || cell.includes("\n") || cell.includes("\r")) {
+    cell = `"${cell.replace(/"/g, '""')}"`;
   }
-  return val;
+  return cell;
 }
 
 export async function GET(request: NextRequest) {
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(deals.status, status as "draft" | "review" | "approved" | "sent" | "archived"));
     }
     if (search) {
-      conditions.push(like(deals.merchantName, `%${search}%`));
+      conditions.push(ilike(deals.merchantName, `%${search}%`));
     }
     if (from) {
       conditions.push(gte(deals.createdAt, new Date(from)));

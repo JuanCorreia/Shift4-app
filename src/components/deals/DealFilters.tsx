@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, SlidersHorizontal, Download, FileText } from 'lucide-react';
+import { Search, SlidersHorizontal, Download, FileText, CalendarRange } from 'lucide-react';
 import { useState, useCallback } from 'react';
+import { useToast } from '@/components/ui/ToastProvider';
 
 const STATUS_TABS = [
   { key: 'all', label: 'All' },
@@ -32,6 +33,10 @@ export default function DealFilters() {
 
   const [searchValue, setSearchValue] = useState(currentSearch);
   const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null);
+  // Tesler: the date range is the rare filter, so it starts folded away — but
+  // never while it is actually filtering the list.
+  const [showDates, setShowDates] = useState(Boolean(currentFrom || currentTo));
+  const { addToast } = useToast();
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -52,7 +57,9 @@ export default function DealFilters() {
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    updateParams({ search: searchValue });
+    // A pasted merchant name usually carries leading/trailing spaces; they
+    // would otherwise become part of the LIKE pattern and match nothing.
+    updateParams({ search: searchValue.trim() });
   }
 
   function getExportParams(): string {
@@ -72,17 +79,25 @@ export default function DealFilters() {
       const res = await fetch(url);
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: 'Export failed' }));
-        alert(data.error || 'Export failed');
+        addToast('error', data.error || 'Export failed');
         return;
       }
       const blob = await res.blob();
       const a = document.createElement('a');
+      const filename = `deals-export-${new Date().toISOString().split('T')[0]}.${type}`;
       a.href = URL.createObjectURL(blob);
-      a.download = `deals-export-${new Date().toISOString().split('T')[0]}.${type}`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(a.href);
+      // Peak-end: a failed export said so, a successful one said nothing — on a
+      // browser that drops the file straight into Downloads, nothing on screen
+      // confirmed the export had happened at all.
+      addToast(
+        'success',
+        `Exported ${currentStatus === 'all' ? 'all deals' : `${currentStatus} deals`} to ${filename}`
+      );
     } catch {
-      alert('Export failed. Please try again.');
+      addToast('error', 'Export failed. Please try again.');
     } finally {
       setExporting(null);
     }
@@ -91,7 +106,7 @@ export default function DealFilters() {
   return (
     <div className="space-y-4">
       {/* Status tabs */}
-      <div className="flex items-center gap-1 border-b border-slate-200">
+      <div className="flex items-center gap-1 border-b border-slate-200 overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.key}
@@ -114,10 +129,12 @@ export default function DealFilters() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
+              id="deal-search"
               type="text"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               placeholder="Search merchant name..."
+              aria-label="Search deals by merchant name"
               className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 transition-all"
             />
           </div>
@@ -129,35 +146,51 @@ export default function DealFilters() {
           </button>
         </form>
 
-        {/* Date from */}
-        <div className="flex flex-col">
-          <label className="text-xs text-gray-500 mb-1">From</label>
-          <input
-            type="date"
-            value={currentFrom}
-            onChange={(e) => updateParams({ from: e.target.value })}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
-          />
-        </div>
+        {/* Date range — folded away until asked for */}
+        {showDates ? (
+          <>
+            <div className="flex flex-col">
+              <label htmlFor="deal-from" className="text-xs text-gray-500 mb-1">From</label>
+              <input
+                id="deal-from"
+                type="date"
+                value={currentFrom}
+                onChange={(e) => updateParams({ from: e.target.value })}
+                className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
+              />
+            </div>
 
-        {/* Date to */}
-        <div className="flex flex-col">
-          <label className="text-xs text-gray-500 mb-1">To</label>
-          <input
-            type="date"
-            value={currentTo}
-            onChange={(e) => updateParams({ to: e.target.value })}
-            className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
-          />
-        </div>
+            <div className="flex flex-col">
+              <label htmlFor="deal-to" className="text-xs text-gray-500 mb-1">To</label>
+              <input
+                id="deal-to"
+                type="date"
+                value={currentTo}
+                onChange={(e) => updateParams({ to: e.target.value })}
+                className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"
+              />
+            </div>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowDates(true)}
+            aria-expanded={false}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <CalendarRange className="w-3.5 h-3.5" />
+            Date range
+          </button>
+        )}
 
         {/* Sort */}
         <div className="flex flex-col">
-          <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+          <label htmlFor="deal-sort" className="text-xs text-gray-500 mb-1 flex items-center gap-1">
             <SlidersHorizontal className="w-3 h-3" />
             Sort
           </label>
           <select
+            id="deal-sort"
             value={currentSort}
             onChange={(e) => updateParams({ sort: e.target.value })}
             className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400"

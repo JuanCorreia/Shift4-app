@@ -4,18 +4,14 @@ import { TrendingDown, TrendingUp, Euro, Activity, AlertTriangle } from 'lucide-
 import type { PricingResult } from '@/lib/pricing';
 import TierIndicator from './TierIndicator';
 import EscalationPanel from './EscalationPanel';
+import { formatEur } from '@/lib/utils';
 
 interface PricingBreakdownProps {
   result: PricingResult;
 }
 
 function fmt(value: number): string {
-  return new Intl.NumberFormat('en-IE', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+  return formatEur(value, 2);
 }
 
 function fmtBps(value: number): string {

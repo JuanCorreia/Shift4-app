@@ -36,28 +36,41 @@
   }
 }
 
-/* Touch-friendly tap targets on mobile */
+/* Touch-friendly tap targets on mobile.
+   Scoped to text-entry controls only: buttons/links keep their own padding,
+   and range/number/checkbox inputs plus icon buttons keep their compact size. */
 @media (pointer: coarse) {
-  button,
-  a,
-  [role="button"],
-  input,
+  input:not([type="range"]):not([type="number"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
   select,
   textarea {
     min-height: 44px;
-    min-width: 44px;
-  }
-
-  /* Smaller elements that still need to be tappable */
-  .text-xs button,
-  nav a {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
   }
 }
 
 /* Safe area for bottom nav */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Visible keyboard focus.
+   Text inputs already replace the outline with their own ring, but buttons,
+   links, tabs and the wizard step controls had no focus indicator at all.
+   `:focus-visible` keeps mouse interaction unchanged. */
+:where(a, button, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* Respect the reduced-motion preference: progress bars, spinners and the
+   card/tab transitions become instant rather than half-finished. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

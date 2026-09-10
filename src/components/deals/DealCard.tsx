@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { StatusBadge } from "./StatusBadge";
 import { ChevronRight } from "lucide-react";
+import { formatEur } from "@/lib/utils";
 
 interface DealCardProps {
   id: string;
@@ -10,15 +11,6 @@ interface DealCardProps {
   status: string;
   createdAt: Date;
   tier: string;
-}
-
-function formatCurrency(value: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(Number(value));
 }
 
 export function DealCard({
@@ -55,7 +47,7 @@ export function DealCard({
         </div>
         <div className="text-right">
           <p className="text-sm font-medium text-gray-700">
-            {formatCurrency(annualVolume)}
+            {formatEur(annualVolume)}
           </p>
           <p className="text-xs text-gray-400">
             {createdAt.toLocaleDateString("en-GB", {

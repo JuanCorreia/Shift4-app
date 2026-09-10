@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calculator, Save, Pencil, Building2, BarChart3, CreditCard, Receipt, Globe, Loader2 } from 'lucide-react';
+import { Calculator, Save, Pencil, Building2, BarChart3, CreditCard, Receipt, Globe, Loader2, AlertCircle } from 'lucide-react';
 import { calculatePricing } from '@/lib/pricing';
 import type { PricingInput, PricingResult } from '@/lib/pricing';
 import PricingBreakdown from '@/components/pricing/PricingBreakdown';
@@ -38,6 +38,8 @@ interface ReviewProps {
   data: WizardData;
   onGoToStep: (step: number) => void;
   onSubmit: (result: PricingResult) => Promise<void>;
+  submitLabel?: string;
+  submittingLabel?: string;
 }
 
 function fmt(value: number): string {
@@ -92,9 +94,10 @@ function DataRow({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-export default function Review({ data, onGoToStep, onSubmit }: ReviewProps) {
+export default function Review({ data, onGoToStep, onSubmit, submitLabel = 'Create Deal', submittingLabel = 'Creating Deal...' }: ReviewProps) {
   const [result, setResult] = useState<PricingResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const brandTotal = data.cardMix.visa + data.cardMix.mastercard + data.cardMix.amex + data.cardMix.mbway + data.cardMix.other;
 
@@ -120,9 +123,11 @@ export default function Review({ data, onGoToStep, onSubmit }: ReviewProps) {
   async function handleSubmit() {
     if (!result) return;
     setSaving(true);
+    setSubmitError(null);
     try {
       await onSubmit(result);
-    } finally {
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save the deal. Please try again.');
       setSaving(false);
     }
   }
@@ -196,14 +201,21 @@ export default function Review({ data, onGoToStep, onSubmit }: ReviewProps) {
 
       {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-3 pt-2">
+        {/* Von Restorff: before a result exists, calculating is the one thing to
+            do; once it exists, saving the deal is - so the calculate button
+            steps down to a quiet "Recalculate". */}
         <button
           type="button"
           onClick={handleCalculate}
           disabled={!canCalculate}
-          className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-800 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className={`flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+            result
+              ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+              : 'text-white bg-emerald-800 hover:bg-emerald-700'
+          }`}
         >
           <Calculator className="w-5 h-5" />
-          Calculate Pricing
+          {result ? 'Recalculate' : 'Calculate Pricing'}
         </button>
 
         {result && (
@@ -211,13 +223,20 @@ export default function Review({ data, onGoToStep, onSubmit }: ReviewProps) {
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-emerald-800 text-white font-medium rounded-lg shadow-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            {saving ? 'Creating Deal...' : 'Create Deal'}
+            {saving ? submittingLabel : submitLabel}
           </button>
         )}
       </div>
+
+      {submitError && (
+        <div role="alert" className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <span>{submitError}</span>
+        </div>
+      )}
 
       {!canCalculate && (
         <p className="text-xs text-amber-600 font-medium">

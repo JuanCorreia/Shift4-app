@@ -184,6 +184,7 @@ export default function UploadZone({ onUploadComplete, disabled }: UploadZonePro
                 type="button"
                 onClick={clearFile}
                 className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label="Remove selected file"
               >
                 <X className="w-4 h-4" />
               </button>

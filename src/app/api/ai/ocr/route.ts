@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { parseStatement } from '@/lib/ai/ocr';
 import { rateLimit } from '@/lib/rate-limit';
+import { canEditDeals } from '@/lib/auth/permissions';
+
+// 20MB upload limit expressed in base64 characters (+ small margin)
+const MAX_PDF_BASE64 = Math.ceil((20 * 1024 * 1024 * 4) / 3) + 1024;
 
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!canEditDeals(session)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { success } = rateLimit(session.userId, 10, 60000);
@@ -19,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     let pdfBase64: string;
 
-    if (body.pdfBase64) {
+    if (typeof body.pdfBase64 === 'string' && body.pdfBase64.length > 0) {
       pdfBase64 = body.pdfBase64;
     } else {
       return NextResponse.json(
@@ -28,11 +35,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate base64 is not empty
-    if (!pdfBase64 || pdfBase64.length === 0) {
+    if (pdfBase64.length > MAX_PDF_BASE64) {
       return NextResponse.json(
-        { error: 'Empty PDF data' },
-        { status: 400 }
+        { error: 'PDF exceeds the 20MB limit' },
+        { status: 413 }
       );
     }
 
@@ -42,9 +48,13 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('OCR error:', err);
 
-    const message = err instanceof Error ? err.message : 'OCR processing failed';
-    const status = message.includes('401') ? 401 : 500;
+    // Do not echo provider error details (may contain request ids / key hints)
+    const message = err instanceof Error ? err.message : '';
+    const isAuth = message.includes('401') || /api key/i.test(message);
 
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json(
+      { error: isAuth ? 'AI provider rejected the API key. Check Settings.' : 'OCR processing failed' },
+      { status: isAuth ? 502 : 500 }
+    );
   }
 }

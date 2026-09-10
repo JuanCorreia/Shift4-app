@@ -59,7 +59,7 @@ export function Toast({ toast, onRemove }: ToastProps) {
   return (
     <div
       className={cn(
-        'flex items-start gap-3 w-80 p-4 rounded-lg border shadow-lg transition-all duration-300',
+        'flex items-start gap-3 w-full sm:w-80 p-4 rounded-lg border shadow-lg transition-all duration-300',
         styleMap[toast.type],
         visible
           ? 'translate-x-0 opacity-100'
@@ -74,6 +74,7 @@ export function Toast({ toast, onRemove }: ToastProps) {
           setTimeout(() => onRemove(toast.id), 300);
         }}
         className="flex-shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
+        aria-label="Dismiss notification"
       >
         <X className="h-4 w-4" />
       </button>

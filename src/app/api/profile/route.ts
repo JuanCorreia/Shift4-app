@@ -3,6 +3,13 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getSession, createSession } from "@/lib/auth/session";
+import { z } from "zod";
+
+const profileSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(255),
+  email: z.string().trim().email("Invalid email address").max(255),
+  emailNotifications: z.boolean().optional(),
+});
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -12,14 +19,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, email, emailNotifications } = body;
-
-    if (!name || typeof name !== "string" || !name.trim()) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    const parsed = profileSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
-    if (!email || typeof email !== "string" || !email.trim()) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
-    }
+    const { name, emailNotifications } = parsed.data;
+    const email = parsed.data.email.toLowerCase();
 
     // Check email uniqueness if changed
     if (email !== session.email) {

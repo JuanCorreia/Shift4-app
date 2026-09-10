@@ -168,6 +168,8 @@ export default function StatementPage() {
             return (
               <div key={s.key} className="flex flex-col items-center gap-1.5">
                 <div
+                  role="img"
+                  aria-label={`${s.label}${isCurrent ? ' (current step)' : ''}`}
                   className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                     isCurrent
                       ? 'bg-emerald-800 text-white shadow-lg shadow-emerald-800/25'

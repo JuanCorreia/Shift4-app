@@ -30,13 +30,14 @@ interface SliderRowProps {
 
 function SliderRow({ label, field, value, color, onChange }: SliderRowProps) {
   return (
-    <div className="flex items-center gap-4">
-      <div className="w-28 flex items-center gap-2">
+    <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-1">
+      <div className="w-full sm:w-28 flex items-center gap-2">
         <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
         <span className="text-sm font-medium text-gray-700">{label}</span>
       </div>
       <input
         type="range"
+        aria-label={`${label} percentage`}
         min={0}
         max={100}
         step={1}
@@ -47,9 +48,10 @@ function SliderRow({ label, field, value, color, onChange }: SliderRowProps) {
           background: `linear-gradient(to right, ${color} ${value}%, #E5E7EB ${value}%)`,
         }}
       />
-      <div className="w-20 flex items-center gap-1">
+      <div className="w-16 sm:w-20 flex items-center gap-1">
         <input
           type="number"
+          aria-label={`${label} percentage`}
           min={0}
           max={100}
           value={value}

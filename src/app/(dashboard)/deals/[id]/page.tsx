@@ -2,12 +2,14 @@ import { db } from "@/lib/db";
 import { deals, escalations } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { partnerFilter } from "@/lib/db/helpers";
+import { formatEur } from "@/lib/utils";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, MapPin, Star, CreditCard, TrendingUp, History, AlertTriangle, FileText, ExternalLink, GitCompare } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Star, CreditCard, TrendingUp, History, AlertTriangle, FileText, ExternalLink, GitCompare, Pencil } from "lucide-react";
 import PriceHistoryTab from "@/components/deals/PriceHistoryTab";
 import { StatusBadge } from "@/components/deals/StatusBadge";
 import { getSession } from "@/lib/auth/session";
+import { canEditDeals, isAdmin } from "@/lib/auth/permissions";
 import StatusWorkflow from "@/components/deals/StatusWorkflow";
 import DealHistory from "@/components/deals/DealHistory";
 import EscalationList from "@/components/deals/EscalationList";
@@ -19,12 +21,7 @@ interface DealDetailPageProps {
 
 function formatCurrency(value: string | null) {
   if (!value) return "--";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(Number(value));
+  return formatEur(value);
 }
 
 function formatPercent(value: string | null) {
@@ -75,10 +72,10 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
         </Link>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900 break-words">
                 {deal.merchantName}
               </h1>
               <StatusBadge status={deal.status} />
@@ -87,7 +84,15 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
               <p className="text-gray-500 mt-1">{deal.hotelGroup}</p>
             )}
           </div>
-          {/* Edit functionality not yet implemented — route /deals/[id]/edit does not exist */}
+          {canEditDeals(session) && deal.status !== "archived" && (
+            <Link
+              href={`/deals/${id}/edit`}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex-shrink-0"
+            >
+              <Pencil className="w-4 h-4" />
+              <span className="hidden sm:inline">Edit</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -99,8 +104,8 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
       />
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex gap-6">
+      <div className="border-b border-gray-200 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
+        <nav className="flex gap-6 whitespace-nowrap min-w-max">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.key;
@@ -501,7 +506,7 @@ export default async function DealDetailPage({ params, searchParams }: DealDetai
 
       {activeTab === 'escalations' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <EscalationList dealId={id} userId={session.userId} />
+          <EscalationList dealId={id} userId={session.userId} canResolve={isAdmin(session)} />
         </div>
       )}
 

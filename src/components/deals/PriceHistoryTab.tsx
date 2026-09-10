@@ -53,16 +53,24 @@ function DiffValue({ label, old, current, suffix }: { label: string; old: unknow
 export default function PriceHistoryTab({ dealId }: { dealId: string }) {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [compareIdx, setCompareIdx] = useState<[number, number] | null>(null);
 
   useEffect(() => {
+    setError(null);
     fetch(`/api/deals/${dealId}/snapshots`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Could not load price history.");
+        return r.json();
+      })
       .then((d) => {
         setSnapshots(d.snapshots || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Could not load price history.");
+        setLoading(false);
+      });
   }, [dealId]);
 
   if (loading) {
@@ -70,6 +78,14 @@ export default function PriceHistoryTab({ dealId }: { dealId: string }) {
       <div className="flex justify-center py-12">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <p role="alert" className="text-sm text-red-600 text-center py-12">
+        {error}
+      </p>
     );
   }
 
